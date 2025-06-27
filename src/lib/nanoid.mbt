@@ -3,6 +3,7 @@
 // API compatible with the official nanoid JavaScript library
 
 // Default URL-friendly alphabet (same order as official nanoid)
+
 ///|
 pub let url_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
 
@@ -73,29 +74,25 @@ fn generate(
 // Default version: nanoid()
 
 ///|
-pub fn nanoid(size? : Int) -> String {
-  let actual_size = match size {
-    Some(s) => s
-    None => DEFAULT_SIZE
-  }
-  generate(url_alphabet, actual_size, get_random_bytes)
+pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> String {
+  generate(url_alphabet, size, get_random_bytes)
 }
 
 // Custom alphabet function - returns a nanoid generator with custom alphabet
-// Compatible with: custom_alphabet(alphabet, default_size)
+// Compatible with: custom_alphabet(alphabet, size)
 
 ///|
-pub fn custom_alphabet(alphabet : String, length : Int) -> (Int) -> String {
+pub fn custom_alphabet(
+  alphabet : String,
+  size~ : Int = DEFAULT_SIZE
+) -> () -> String {
   if alphabet.length() == 0 {
     abort("Custom alphabet cannot be empty")
   }
   if alphabet.length() > 256 {
     abort("Custom alphabet must contain 256 symbols or less")
   }
-  fn(size : Int) -> String {
-    let actual_size = if size <= 0 { length } else { size }
-    generate(alphabet, actual_size, get_random_bytes)
-  }
+  fn() -> String { generate(alphabet, size, get_random_bytes) }
 }
 
 // Custom random function - allows custom random generator

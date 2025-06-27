@@ -12,18 +12,14 @@ fn main {
   println("Custom length (10): \{id2}")
 
   // Custom alphabet - same as JavaScript: custom_alphabet("1234567890abcdef", 10)
-  let hex_nanoid = @lib.custom_alphabet("1234567890abcdef", 10)
-  let id3 = hex_nanoid(10)
+  let hex_nanoid = @lib.custom_alphabet("1234567890abcdef", size=10)
+  let id3 = hex_nanoid()
   println("Custom alphabet (hex): \{id3}")
 
   // Custom alphabet with default size (using custom_alphabet)
-  let hex_nanoid_8 = @lib.custom_alphabet("1234567890abcdef", 8)
-  let id5 = hex_nanoid_8(8)
+  let hex_nanoid_default = @lib.custom_alphabet("1234567890abcdef")
+  let id5 = hex_nanoid_default()
   println("Custom alphabet with default size: \{id5}")
-
-  // Custom alphabet with different size
-  let id6 = hex_nanoid(5)
-  println("Custom alphabet with size override: \{id6}")
 
   // Using url_alphabet directly
   println("URL Alphabet: \{@lib.url_alphabet}")

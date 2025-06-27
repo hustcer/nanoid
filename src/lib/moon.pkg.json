@@ -1,0 +1,6 @@
+{
+  "deps": {
+    "moonbit/base": "0.1.0",
+    "moonbitlang/core": "*"
+  }
+}

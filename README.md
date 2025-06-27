@@ -34,12 +34,13 @@ let short_id = @lib.nanoid(size=10) // => "IRFa-VaY2b"
 ### Custom Alphabet
 
 ```moonbit
-// Create a custom alphabet generator
-let hex_generator = @lib.custom_alphabet("0123456789ABCDEF", 8)
-let hex_id = hex_generator(8) // => "2A4F7E1B"
+// Create a custom alphabet generator with default size (21)
+let hex_generator = @lib.custom_alphabet("0123456789ABCDEF")
+let hex_id = hex_generator() // => "2A4F7E1B9C3D4F5E6A7B"
 
-// Use generator with different size
-let longer_hex = hex_generator(12) // => "2A4F7E1B9C3D"
+// Create a custom alphabet generator with specified size
+let hex_generator_8 = @lib.custom_alphabet("0123456789ABCDEF", size=8)
+let hex_id_8 = hex_generator_8() // => "2A4F7E1B"
 ```
 
 ### Custom Random Generator
@@ -48,7 +49,13 @@ let longer_hex = hex_generator(12) // => "2A4F7E1B9C3D"
 // Define custom random function
 fn my_random(size : Int) -> Array[Int] {
   // Your custom random implementation
-  @lib.get_random_bytes(size)
+  // Note: get_random_bytes is internal, use a proper random implementation
+  let rng = @random.Rand::new()
+  let bytes = Array::make(size, 0)
+  for i = 0; i < size; i = i + 1 {
+    bytes[i] = rng.int(limit=256)
+  }
+  bytes
 }
 
 // Create generator with custom random
@@ -77,8 +84,21 @@ let custom_id = custom_gen() // => uses your random function
 |----------|-------------|---------|
 | `nanoid()` | Generate ID with default length (21) | `nanoid()` |
 | `nanoid(size=n)` | Generate ID with specified length | `nanoid(size=10)` |
-| `custom_alphabet(alphabet, default_length)` | Create custom alphabet generator | `custom_alphabet("abc123", 8)` |
+| `custom_alphabet(alphabet, size=21)` | Create custom alphabet generator | `custom_alphabet("abc123", size=8)` |
 | `custom_random(alphabet, size, random_fn)` | Create generator with custom random function | `custom_random("abc", 10, my_random)` |
+
+### Function Signatures
+
+```moonbit
+// Main nanoid function
+pub fn nanoid(size~ : Int = 21) -> String
+
+// Custom alphabet generator
+pub fn custom_alphabet(alphabet : String, size~ : Int = 21) -> () -> String
+
+// Custom random generator
+pub fn custom_random(alphabet : String, size : Int, random : (Int) -> Array[Int]) -> () -> String
+```
 
 ### Constants
 
@@ -134,14 +154,19 @@ fn main {
   let short = @lib.nanoid(size=8)
   println("Short ID: \{short}")
 
-  // Custom alphabet for hex IDs
-  let hex_gen = @lib.custom_alphabet(@lib.hex, 8)
-  let hex_id = hex_gen(8)
-  println("Hex ID: \{hex_id}")
+  // Custom alphabet for hex IDs with default size
+  let hex_gen = @lib.custom_alphabet(@lib.hex)
+  let hex_id = hex_gen()
+  println("Hex ID (default): \{hex_id}")
+
+  // Custom alphabet for hex IDs with specific size
+  let hex_gen_8 = @lib.custom_alphabet(@lib.hex, size=8)
+  let hex_id_8 = hex_gen_8()
+  println("Hex ID (8 chars): \{hex_id_8}")
 
   // Numeric codes
-  let num_gen = @lib.custom_alphabet(@lib.numbers, 6)
-  let code = num_gen(6)
+  let num_gen = @lib.custom_alphabet(@lib.numbers, size=6)
+  let code = num_gen()
   println("Numeric code: \{code}")
 
   // Using preset alphabets

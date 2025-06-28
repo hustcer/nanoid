@@ -2,6 +2,7 @@
 // Tests for all public functions and edge cases
 
 // Test basic nanoid generation with default parameters
+
 ///|
 test "nanoid_default_generation" {
   let id = nanoid()
@@ -208,8 +209,6 @@ test "basic_distribution_check" {
   assert_true(one_count > 300)
   assert_eq(zero_count + one_count, 1000)
 }
-
-// ========== 补充的测试用例 ==========
 
 // Test multiple ID generation for collision checking
 

@@ -2,6 +2,10 @@
 // A tiny, secure, URL-friendly, unique string ID generator
 // API compatible with the official nanoid JavaScript library
 
+// Custom error type for nanoid operations
+///|
+suberror NanoidError String
+
 // Default URL-friendly alphabet (same order as official nanoid)
 
 ///|
@@ -50,16 +54,16 @@ fn generate(
   alphabet : String,
   size : Int,
   get_random : (Int) -> Array[Int]
-) -> String {
+) -> String raise NanoidError {
   let alphabet_length = alphabet.length()
   if alphabet_length == 0 {
-    abort("Alphabet cannot be empty")
+    raise NanoidError("Alphabet cannot be empty")
   }
   if alphabet_length > 256 {
-    abort("Alphabet must contain 256 symbols or less")
+    raise NanoidError("Alphabet must contain 256 symbols or less")
   }
   if size <= 0 {
-    abort("Size must be positive")
+    raise NanoidError("Size must be positive")
   }
 
   // Special case: single character alphabet - no randomness needed
@@ -103,7 +107,7 @@ fn generate(
 // Default version: nanoid()
 
 ///|
-pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> String {
+pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> String raise NanoidError {
   generate(url_alphabet, size, get_random_bytes)
 }
 
@@ -114,14 +118,16 @@ pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> String {
 pub fn custom_alphabet(
   alphabet : String,
   size~ : Int = DEFAULT_SIZE
-) -> () -> String {
+) -> (() -> String raise NanoidError) raise NanoidError {
   if alphabet.length() == 0 {
-    abort("Custom alphabet cannot be empty")
+    raise NanoidError("Custom alphabet cannot be empty")
   }
   if alphabet.length() > 256 {
-    abort("Custom alphabet must contain 256 symbols or less")
+    raise NanoidError("Custom alphabet must contain 256 symbols or less")
   }
-  fn() -> String { generate(alphabet, size, get_random_bytes) }
+  fn() -> String raise NanoidError {
+    generate(alphabet, size, get_random_bytes)
+  }
 }
 
 // Custom random function - allows custom random generator
@@ -132,14 +138,14 @@ pub fn custom_random(
   alphabet : String,
   size : Int,
   random : (Int) -> Array[Int]
-) -> () -> String {
+) -> (() -> String raise NanoidError) raise NanoidError {
   if alphabet.length() == 0 {
-    abort("Custom alphabet cannot be empty")
+    raise NanoidError("Custom alphabet cannot be empty")
   }
   if alphabet.length() > 256 {
-    abort("Custom alphabet must contain 256 symbols or less")
+    raise NanoidError("Custom alphabet must contain 256 symbols or less")
   }
-  fn() -> String { generate(alphabet, size, random) }
+  fn() -> String raise NanoidError { generate(alphabet, size, random) }
 }
 
 // Common alphabet presets for convenience (not part of official API)

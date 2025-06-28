@@ -25,18 +25,18 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 import nanoid
 
 // Or import specific functions
-import nanoid.{ nanoid, custom_alphabet }
+import @nanoid.{ nanoid, custom_alphabet }
 ```
 
 ### Basic Usage
 
 ```moonbit
 // Generate a URL-safe ID with default length (21 characters)
-let id = nanoid.nanoid()
+let id = @nanoid.nanoid()
 println(id) // => "rMf19KHCD5GQw0wzQnEKd"
 
 // Generate an ID with custom length
-let short_id = nanoid.nanoid(size=10)
+let short_id = @nanoid.nanoid(size=10)
 println(short_id) // => "yue8fl8f9X"
 ```
 
@@ -44,12 +44,12 @@ println(short_id) // => "yue8fl8f9X"
 
 ```moonbit
 // Create a generator with custom alphabet
-let hex_generator = nanoid.custom_alphabet(nanoid.hex, size=8)
+let hex_generator = @nanoid.custom_alphabet(@nanoid.hex, size=8)
 let hex_id = hex_generator()
 println(hex_id) // => "a1b2c3d4"
 
 // Use predefined alphabet sets
-let safe_generator = nanoid.custom_alphabet(nanoid.nolookalikes, size=12)
+let safe_generator = @nanoid.custom_alphabet(@nanoid.nolookalikes, size=12)
 let safe_id = safe_generator()
 println(safe_id) // => "6B9CMnpqrt7w"
 ```
@@ -59,18 +59,18 @@ println(safe_id) // => "6B9CMnpqrt7w"
 ```moonbit
 // Handle potential errors gracefully
 try {
-  let id = nanoid.nanoid(size=10)
+  let id = @nanoid.nanoid(size=10)
   println("Generated: \{id}")
 } catch {
-  nanoid.NanoidError(msg) => println("Error: \{msg}")
+  @nanoid.NanoidError(msg) => println("Error: \{msg}")
 }
 
 // Custom alphabet error handling
 try {
-  let generator = nanoid.custom_alphabet("", size=10) // Empty alphabet
+  let generator = @nanoid.custom_alphabet("", size=10) // Empty alphabet
   let id = generator()
 } catch {
-  nanoid.NanoidError(msg) => println("Alphabet error: \{msg}")
+  @nanoid.NanoidError(msg) => println("Alphabet error: \{msg}")
 }
 ```
 
@@ -87,8 +87,8 @@ Generates a URL-safe unique ID using the default alphabet.
 - Raises: `NanoidError` if size is invalid
 
 ```moonbit
-let id1 = nanoid.nanoid()          // 21 characters
-let id2 = nanoid.nanoid(size=10)   // 10 characters
+let id1 = @nanoid.nanoid()          // 21 characters
+let id2 = @nanoid.nanoid(size=10)   // 10 characters
 ```
 
 #### `custom_alphabet(alphabet : String, size~ : Int = 21) -> (() -> String raise NanoidError) raise NanoidError`
@@ -101,7 +101,7 @@ Creates a generator function with a custom alphabet.
 - Raises: `NanoidError` if alphabet is invalid
 
 ```moonbit
-let generator = nanoid.custom_alphabet("0123456789", size=8)
+let generator = @nanoid.custom_alphabet("0123456789", size=8)
 let numeric_id = generator()  // => "12345678"
 ```
 
@@ -153,10 +153,10 @@ Based on [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary), we p
 import nanoid
 
 // Use different alphabets for different purposes
-let uuid_like = nanoid.custom_alphabet(nanoid.hex, size=32)
-let readable = nanoid.custom_alphabet(nanoid.nolookalikes, size=8)
-let safe_public = nanoid.custom_alphabet(nanoid.nolookalikes_safe, size=6)
-let crypto_style = nanoid.custom_alphabet(nanoid.base58, size=16)
+let uuid_like = @nanoid.custom_alphabet(@nanoid.hex, size=32)
+let readable = @nanoid.custom_alphabet(@nanoid.nolookalikes, size=8)
+let safe_public = @nanoid.custom_alphabet(@nanoid.nolookalikes_safe, size=6)
+let crypto_style = @nanoid.custom_alphabet(@nanoid.base58, size=16)
 ```
 
 ## Installation
@@ -202,24 +202,24 @@ All functions that can fail return `NanoidError` instead of panicking:
 ```moonbit
 // Invalid size
 try {
-  let bad_id = nanoid.nanoid(size=-1)
+  let bad_id = @nanoid.nanoid(size=-1)
 } catch {
-  nanoid.NanoidError(msg) => println("Caught: \{msg}")
+  @nanoid.NanoidError(msg) => println("Caught: \{msg}")
 }
 
 // Empty alphabet
 try {
-  let bad_generator = nanoid.custom_alphabet("")
+  let bad_generator = @nanoid.custom_alphabet("")
 } catch {
-  nanoid.NanoidError(msg) => println("Caught: \{msg}")
+  @nanoid.NanoidError(msg) => println("Caught: \{msg}")
 }
 
 // Alphabet too long (>256 chars)
 try {
   let huge_alphabet = "..." // 300+ characters
-  let bad_generator = nanoid.custom_alphabet(huge_alphabet)
+  let bad_generator = @nanoid.custom_alphabet(huge_alphabet)
 } catch {
-  nanoid.NanoidError(msg) => println("Caught: \{msg}")
+  @nanoid.NanoidError(msg) => println("Caught: \{msg}")
 }
 ```
 

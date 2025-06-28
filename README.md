@@ -4,7 +4,7 @@
 
 A tiny, secure, URL-friendly, unique string ID generator for [MoonBit](https://moonbitlang.com/).
 
-This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) JavaScript library, maintaining full API compatibility while providing excellent error handling through MoonBit's robust type system.
+This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) JavaScript library, maintaining API compatibility while providing excellent error handling through MoonBit's robust type system.
 
 ## Features
 
@@ -114,7 +114,7 @@ Based on [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary), we p
 | `numbers` | `0123456789` | Numbers only |
 | `lowercase` | `abcdefghijklmnopqrstuvwxyz` | Lowercase letters |
 | `uppercase` | `ABCDEFGHIJKLMNOPQRSTUVWXYZ` | Uppercase letters |
-| `alphanumeric` | `A-Za-z0-9` | Letters and numbers |
+| `alphanumeric` | `A-Za-z0-9` (62 chars) | Letters and numbers |
 
 ### Hexadecimal
 
@@ -127,13 +127,13 @@ Based on [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary), we p
 
 | Alphabet | Characters | Description |
 |----------|------------|-------------|
-| `url_alphabet` | `A-Za-z0-9_-` | Default URL-safe alphabet |
-| `nolookalikes` | `346789ABC...xyz` | No confusing characters (1,l,I,0,O,o,u,v,5,S,s,2,Z) |
-| `nolookalikes_safe` | `6789BCD...twz` | No lookalikes + no vowels (safer for public IDs) |
-| `base58` | `123456789ABC...xyz` | Bitcoin-style (no 0,O,I,l) |
-| `base62` | `0-9A-Za-z` | Standard base62 encoding |
-| `url_safe` | `A-Za-z0-9-_` | URL-safe characters |
-| `filename_safe` | `A-Za-z0-9-_` | Cross-platform filename safe |
+| `url_alphabet` | `A-Za-z0-9_-` (64 chars) | Default URL-safe alphabet |
+| `nolookalikes` | `346789ABCD...xyz` (49 chars) | No confusing characters (removes 1,l,I,0,O,o,u,v,5,S,s,2,Z) |
+| `nolookalikes_safe` | `6789BCDF...twz` (35 chars) | No lookalikes + no vowels (safer for public IDs) |
+| `base58` | `123456789ABCD...xyz` (58 chars) | Bitcoin-style (excludes 0,O,I,l) |
+| `base62` | `0-9A-Za-z` (62 chars) | Standard base62 encoding |
+| `url_safe` | `A-Za-z0-9_-` (64 chars) | URL-safe characters |
+| `filename_safe` | `A-Za-z0-9_-` (64 chars) | Cross-platform filename safe |
 
 ### Usage Examples
 
@@ -224,7 +224,7 @@ The test suite includes:
 | Aspect | Nanoid | UUID v4 |
 |--------|--------|---------|
 | Size | 21 chars | 36 chars |
-| Alphabet | 64 chars | 16 chars |
+| Alphabet | 64 chars (`A-Za-z0-9_-`) | 16 chars (`0-9a-f`) |
 | Random bits | 126 | 122 |
 | URL-safe | ✅ | ❌ (needs encoding) |
 | Collision probability | ~1 in billion for 103 trillion IDs | Similar |

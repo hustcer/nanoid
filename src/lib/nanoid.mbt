@@ -167,10 +167,6 @@ pub let nolookalikes = "346789ABCDEFGHJKLMNPQRTUVWXYabcdefghijkmnpqrtwxyz"
 /// Complete set: 6789BCDFGHJKLMNPQRTWbcdfghjkmnpqrtwz
 pub let nolookalikes_safe = "6789BCDFGHJKLMNPQRTWbcdfghjkmnpqrtwz"
 
-///| ASCII letters and digits (equivalent to [A-Za-z0-9])
-/// Useful for environments that require strict ASCII compatibility
-pub let ascii_letters_digits = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-
 ///| Base62 encoding alphabet (numbers, uppercase, lowercase)
 /// Compatible with most base62 implementations
 pub let base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"

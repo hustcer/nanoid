@@ -37,24 +37,31 @@ fn get_random_bytes(size : Int) -> Array[Int] {
 }
 
 ///| Internal function to generate ID with given alphabet, size, and random function
-/// Uses graceful degradation for common edge cases
+/// Returns empty string for invalid parameters with warning messages
 fn generate(
   alphabet : String,
   size : Int,
   get_random : (Int) -> Array[Int]
 ) -> String {
-  // Graceful degradation: use default alphabet if empty
-  let effective_alphabet = if alphabet.length() == 0 {
-    url_alphabet
-  } else if alphabet.length() > 256 {
-    // Graceful degradation: truncate alphabet to first 256 characters
-    alphabet.substring(start=0, end=256)
-  } else {
-    alphabet
+  // Check for empty alphabet
+  if alphabet.length() == 0 {
+    println("[nanoid] Warning: alphabet cannot be empty")
+    return ""
   }
 
-  // Graceful degradation: use default size for invalid sizes
-  let effective_size = if size <= 0 { DEFAULT_SIZE } else { size }
+  // Check for oversized alphabet
+  if alphabet.length() > 256 {
+    println("[nanoid] Warning: alphabet length exceeds 256 characters")
+    return ""
+  }
+
+  // Check for invalid size
+  if size <= 0 {
+    println("[nanoid] Warning: size must be greater than 0")
+    return ""
+  }
+  let effective_alphabet = alphabet
+  let effective_size = size
   let alphabet_length = effective_alphabet.length()
 
   // Special case: single character alphabet - no randomness needed
@@ -100,7 +107,7 @@ fn generate(
 
 ///| Main nanoid function - generates URL-friendly unique ID
 /// Generates secure random IDs using the default URL-safe alphabet
-/// Uses graceful degradation for invalid sizes (defaults to 21)
+/// Returns empty string with warning for invalid sizes (size <= 0)
 /// Usage: nanoid() generates 21-character ID, nanoid(size=10) generates 10-character ID
 pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> String {
   generate(url_alphabet, size, get_random_bytes)
@@ -108,7 +115,7 @@ pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> String {
 
 ///| Custom alphabet function - returns a nanoid generator with custom alphabet
 /// Creates a generator function that uses the specified alphabet and size
-/// Uses graceful degradation: empty alphabet defaults to url_alphabet, oversized alphabet gets truncated
+/// Returns empty string with warning for invalid parameters (empty alphabet, oversized alphabet, or invalid size)
 /// Usage: let gen = custom_alphabet("abc123", size=8); let id = gen()
 pub fn custom_alphabet(
   alphabet : String,
@@ -119,7 +126,7 @@ pub fn custom_alphabet(
 
 ///| Custom random function - allows custom random generator
 /// Creates a generator with custom alphabet, size, and random function
-/// Uses graceful degradation for alphabet and size parameters
+/// Returns empty string with warning for invalid alphabet and size parameters
 /// Usage: let gen = custom_random(alphabet, size, random_fn); let id = gen()
 pub fn custom_random(
   alphabet : String,

@@ -63,31 +63,6 @@ let safe_id = safe_generator()
 println(safe_id) // => "6B9CMnpqrt7w"
 ```
 
-### Graceful Error Handling
-
-The library uses **graceful degradation** to handle edge cases, making it more user-friendly:
-
-```moonbit
-// Invalid parameters are automatically corrected
-let id1 = @nanoid.nanoid(size=-10)     // Negative size → defaults to 21
-let id2 = @nanoid.nanoid(size=0)       // Zero size → defaults to 21
-
-// Empty alphabet falls back to default URL-safe alphabet
-let generator1 = @nanoid.custom_alphabet("", size=10)
-let id3 = generator1()  // Uses default alphabet
-
-// Oversized alphabet gets truncated to first 256 characters
-let huge_alphabet = "ABC..." // Imagine this is 300+ characters
-let generator2 = @nanoid.custom_alphabet(huge_alphabet, size=8)
-let id4 = generator2()  // Uses first 256 characters
-
-// Multiple issues are handled gracefully
-let generator3 = @nanoid.custom_alphabet("", size=-5)
-let id5 = generator3()  // Empty alphabet → default, negative size → 21
-```
-
-This approach ensures you always get a valid ID instead of handling errors, which is more practical for ID generation use cases.
-
 ## API Reference
 
 ### Core Functions
@@ -96,33 +71,36 @@ This approach ensures you always get a valid ID instead of handling errors, whic
 
 Generates a URL-safe unique ID using the default alphabet.
 
-- `size`: Length of the generated ID (default: 21, negative/zero values default to 21)
-- Returns: A random string ID
+- `size`: Length of the generated ID (default: 21, non-positive values return empty string with warning)
+- Returns: A random string ID, or empty string if size is invalid
 
 ```moonbit
 let id1 = @nanoid.nanoid()          // 21 characters
 let id2 = @nanoid.nanoid(size=10)   // 10 characters
+let id3 = @nanoid.nanoid(size=0)    // "" with warning
 ```
 
 #### `custom_alphabet(alphabet : String, size~ : Int = 21) -> (() -> String)`
 
 Creates a generator function with a custom alphabet.
 
-- `alphabet`: String containing characters to use (empty string defaults to URL-safe alphabet, >256 chars gets truncated)
-- `size`: Default length for generated IDs (negative/zero values default to 21)
+- `alphabet`: String containing characters to use (empty string or >256 chars returns empty string with warning)
+- `size`: Default length for generated IDs (non-positive values return empty string with warning)
 - Returns: A generator function
 
 ```moonbit
 let generator = @nanoid.custom_alphabet("0123456789", size=8)
 let numeric_id = generator()  // => "12345678"
+let bad_gen = @nanoid.custom_alphabet("", size=8)
+let empty_id = bad_gen()      // "" with warning
 ```
 
 #### `custom_random(alphabet : String, size : Int, random : (Int) -> Array[Int]) -> (() -> String)`
 
 Creates a generator with custom alphabet and random function.
 
-- `alphabet`: String containing characters to use (empty string defaults to URL-safe alphabet, >256 chars gets truncated)
-- `size`: Length for generated IDs (negative/zero values default to 21)
+- `alphabet`: String containing characters to use (empty string or >256 chars returns empty string with warning)
+- `size`: Length for generated IDs (non-positive values return empty string with warning)
 - `random`: Custom random byte generator function
 - Returns: A generator function
 

@@ -459,3 +459,137 @@ test "custom_random_edge_cases" {
     assert_true(char == 'A' || char == 'B')
   }
 }
+
+// ========== Graceful Degradation Tests ==========
+
+// Test graceful degradation: empty alphabet should use default
+
+///|
+test "empty_alphabet_graceful_degradation" {
+  let generator = custom_alphabet("", size=10)
+  let id = generator()
+  assert_eq(id.length(), 10)
+
+  // Should contain only URL-safe characters (default alphabet)
+  for i = 0; i < id.length(); i = i + 1 {
+    let char = id.char_at(i)
+    assert_true(url_alphabet.contains(char.to_string()))
+  }
+}
+
+// Test graceful degradation: oversized alphabet should be truncated
+
+///|
+test "oversized_alphabet_graceful_degradation" {
+  // Create an alphabet longer than 256 characters
+  let mut long_alphabet = ""
+  for i = 0; i < 300; i = i + 1 {
+    long_alphabet = long_alphabet + "A"
+  }
+  let generator = custom_alphabet(long_alphabet, size=5)
+  let id = generator()
+  assert_eq(id.length(), 5)
+  assert_eq(id, "AAAAA") // Should be all A's since truncated alphabet is all A's
+}
+
+// Test graceful degradation: negative size should use default size
+
+///|
+test "negative_size_graceful_degradation" {
+  let id = nanoid(size=-10)
+  assert_eq(id.length(), 21) // Should use DEFAULT_SIZE
+
+  // Should contain only URL-safe characters
+  for i = 0; i < id.length(); i = i + 1 {
+    let char = id.char_at(i)
+    assert_true(url_alphabet.contains(char.to_string()))
+  }
+}
+
+// Test graceful degradation: zero size should use default size
+
+///|
+test "zero_size_graceful_degradation" {
+  let id = nanoid(size=0)
+  assert_eq(id.length(), 21) // Should use DEFAULT_SIZE
+}
+
+// Test graceful degradation with custom alphabet and negative size
+
+///|
+test "custom_alphabet_negative_size_degradation" {
+  let generator = custom_alphabet("XYZ", size=-5)
+  let id = generator()
+  assert_eq(id.length(), 21) // Should use DEFAULT_SIZE
+
+  // Should use the provided alphabet, not default
+  for i = 0; i < id.length(); i = i + 1 {
+    let char = id.char_at(i)
+    assert_true(char == 'X' || char == 'Y' || char == 'Z')
+  }
+}
+
+// Test graceful degradation: multiple issues at once
+
+///|
+test "multiple_degradation_issues" {
+  let generator = custom_alphabet("", size=-1)
+  let id = generator()
+  assert_eq(id.length(), 21) // Default size
+
+  // Should use default alphabet
+  for i = 0; i < id.length(); i = i + 1 {
+    let char = id.char_at(i)
+    assert_true(url_alphabet.contains(char.to_string()))
+  }
+}
+
+// Test custom_random with graceful degradation
+
+///|
+test "custom_random_graceful_degradation" {
+  fn simple_random(size : Int) -> Array[Int] {
+    Array::make(size, 0) // Always return 0
+  }
+
+  let generator = custom_random("", -1, simple_random)
+  let id = generator()
+  assert_eq(id.length(), 21) // Default size
+
+  // With empty alphabet (degraded to default) and always 0 random,
+  // should get first character of url_alphabet repeated
+  let first_char = url_alphabet.char_at(0)
+  for i = 0; i < id.length(); i = i + 1 {
+    assert_eq(id.char_at(i), first_char)
+  }
+}
+
+// Test that valid parameters still work as expected
+
+///|
+test "valid_parameters_still_work" {
+  // Ensure graceful degradation doesn't affect normal operation
+  let generator = custom_alphabet("ABC", size=5)
+  let id = generator()
+  assert_eq(id.length(), 5)
+  for i = 0; i < id.length(); i = i + 1 {
+    let char = id.char_at(i)
+    assert_true(char == 'A' || char == 'B' || char == 'C')
+  }
+}
+
+// Test edge case: alphabet with exactly 256 characters
+
+///|
+test "alphabet_256_chars_boundary" {
+  // Create alphabet with exactly 256 unique characters
+  let mut alphabet_256 = ""
+  for i = 0; i < 256; i = i + 1 {
+    // Use ASCII characters starting from 32 (space) to avoid control chars
+    let char_code = 32 + i % 95 // Cycle through printable ASCII
+    alphabet_256 = alphabet_256 + Int::unsafe_to_char(char_code).to_string()
+  }
+  let generator = custom_alphabet(alphabet_256, size=10)
+  let id = generator()
+  assert_eq(id.length(), 10)
+}

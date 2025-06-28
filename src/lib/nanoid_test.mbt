@@ -153,16 +153,21 @@ test "large_size" {
 }
 
 // Test very long alphabet (close to 256 limit)
-// test "long_alphabet" {
-//   let mut long_alphabet = ""
-//   for i = 0; i < 200; i = i + 1 {
-//     long_alphabet = long_alphabet + i.to_string()
-//   }
+test "long_alphabet" {
+  // Create a long alphabet using only basic ASCII characters to stay well under 256 limit
+  let mut long_alphabet = alphanumeric  // 62 characters: A-Z, a-z, 0-9
+  long_alphabet = long_alphabet + "_-+="  // Add 4 more: 66 total
+  long_alphabet = long_alphabet + "!@#$%^&*(){}[]|:;<>?,."  // Add common symbols
+  long_alphabet = long_alphabet + "~`"  // Add 2 more safe ASCII chars
 
-//   let generator = custom_alphabet(long_alphabet, size=10)
-//   let id = generator()
-//   assert_eq(id.length(), 10)
-// }
+  // Verify we're well under the 256 limit and testing a reasonably long alphabet
+  assert_true(long_alphabet.length() > 60)   // Should be reasonably long
+  assert_true(long_alphabet.length() <= 256) // Must stay under limit
+
+  let generator = custom_alphabet(long_alphabet, size=10)
+  let id = generator()
+  assert_eq(id.length(), 10)
+}
 
 // Test distribution is reasonable (not perfect randomness test, but basic check)
 test "basic_distribution_check" {

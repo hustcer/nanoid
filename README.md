@@ -109,31 +109,31 @@ Based on [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary), we p
 
 ### Basic Sets
 
-| Alphabet | Characters | Description |
-|----------|------------|-------------|
-| `numbers` | `0123456789` | Numbers only |
-| `lowercase` | `abcdefghijklmnopqrstuvwxyz` | Lowercase letters |
-| `uppercase` | `ABCDEFGHIJKLMNOPQRSTUVWXYZ` | Uppercase letters |
-| `alphanumeric` | `A-Za-z0-9` (62 chars) | Letters and numbers |
+| Alphabet       | Characters                   | Description         |
+| -------------- | ---------------------------- | ------------------- |
+| `numbers`      | `0123456789`                 | Numbers only        |
+| `lowercase`    | `abcdefghijklmnopqrstuvwxyz` | Lowercase letters   |
+| `uppercase`    | `ABCDEFGHIJKLMNOPQRSTUVWXYZ` | Uppercase letters   |
+| `alphanumeric` | `A-Za-z0-9` (62 chars)       | Letters and numbers |
 
 ### Hexadecimal
 
-| Alphabet | Characters | Description |
-|----------|------------|-------------|
-| `hex` | `0123456789abcdef` | Lowercase hexadecimal |
+| Alphabet    | Characters         | Description           |
+| ----------- | ------------------ | --------------------- |
+| `hex`       | `0123456789abcdef` | Lowercase hexadecimal |
 | `hex_upper` | `0123456789ABCDEF` | Uppercase hexadecimal |
 
 ### Special Purpose
 
-| Alphabet | Characters | Description |
-|----------|------------|-------------|
-| `url_alphabet` | `A-Za-z0-9_-` (64 chars) | Default URL-safe alphabet |
-| `nolookalikes` | `346789ABCD...xyz` (49 chars) | No confusing characters (removes 1,l,I,0,O,o,u,v,5,S,s,2,Z) |
-| `nolookalikes_safe` | `6789BCDF...twz` (35 chars) | No lookalikes + no vowels (safer for public IDs) |
-| `base58` | `123456789ABCD...xyz` (58 chars) | Bitcoin-style (excludes 0,O,I,l) |
-| `base62` | `0-9A-Za-z` (62 chars) | Standard base62 encoding |
-| `url_safe` | `A-Za-z0-9_-` (64 chars) | URL-safe characters |
-| `filename_safe` | `A-Za-z0-9_-` (64 chars) | Cross-platform filename safe |
+| Alphabet            | Characters                       | Description                                                 |
+| ------------------- | -------------------------------- | ----------------------------------------------------------- |
+| `url_alphabet`      | `A-Za-z0-9_-` (64 chars)         | Default URL-safe alphabet                                   |
+| `nolookalikes`      | `346789ABCD...xyz` (49 chars)    | No confusing characters (removes 1,l,I,0,O,o,u,v,5,S,s,2,Z) |
+| `nolookalikes_safe` | `6789BCDF...twz` (35 chars)      | No lookalikes + no vowels (safer for public IDs)            |
+| `base58`            | `123456789ABCD...xyz` (58 chars) | Bitcoin-style (excludes 0,O,I,l)                            |
+| `base62`            | `0-9A-Za-z` (62 chars)           | Standard base62 encoding                                    |
+| `url_safe`          | `A-Za-z0-9_-` (64 chars)         | URL-safe characters                                         |
+| `filename_safe`     | `A-Za-z0-9_-` (64 chars)         | Cross-platform filename safe                                |
 
 ### Usage Examples
 
@@ -212,6 +212,7 @@ moon test --target all
 ```
 
 The test suite includes:
+
 - Basic functionality tests
 - Custom alphabet tests
 - Error handling tests
@@ -221,13 +222,13 @@ The test suite includes:
 
 ## Comparison with UUID
 
-| Aspect | Nanoid | UUID v4 |
-|--------|--------|---------|
-| Size | 21 chars | 36 chars |
-| Alphabet | 64 chars (`A-Za-z0-9_-`) | 16 chars (`0-9a-f`) |
-| Random bits | 126 | 122 |
-| URL-safe | ✅ | ❌ (needs encoding) |
-| Collision probability | ~1 in billion for 103 trillion IDs | Similar |
+| Aspect                | Nanoid                             | UUID v4             |
+| --------------------- | ---------------------------------- | ------------------- |
+| Size                  | 21 chars                           | 36 chars            |
+| Alphabet              | 64 chars (`A-Za-z0-9_-`)           | 16 chars (`0-9a-f`) |
+| Random bits           | 126                                | 122                 |
+| URL-safe              | ✅                                 | ❌ (needs encoding) |
+| Collision probability | ~1 in billion for 103 trillion IDs | Similar             |
 
 ## License
 

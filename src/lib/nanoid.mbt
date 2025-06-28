@@ -1,31 +1,21 @@
-// MoonBit port of Nano ID library
-// A tiny, secure, URL-friendly, unique string ID generator
-// API compatible with the official nanoid JavaScript library
+///| MoonBit port of Nano ID library
+/// A tiny, secure, URL-friendly, unique string ID generator
+/// MoonBit implementation compatible with the official nanoid JavaScript library
 
-// Custom error type for nanoid operations
-
-///|
+///| Custom error type for nanoid operations
 suberror NanoidError String
 
-// Default URL-friendly alphabet (same order as official nanoid)
-// Compatible with official nanoid: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-
-
-///|
+///| Default URL-friendly alphabet (official nanoid order)
+/// Uses the same character order as official nanoid: A-Z, a-z, 0-9, underscore, hyphen
 pub let url_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
 
-// Default ID length (same as official nanoid)
-
-///|
+///| Default ID length (same as official nanoid)
 const DEFAULT_SIZE = 21
 
-// Global counter to add entropy across function calls
-
-///|
+///| Global counter to add entropy across function calls
 let call_counter : Ref[Int] = { val: 0 }
 
-// Internal function to generate random bytes
-
-///|
+///| Internal function to generate random bytes
 fn get_random_bytes(size : Int) -> Array[Int] {
   // Increment call counter for additional entropy
   call_counter.val = call_counter.val + 1
@@ -49,9 +39,7 @@ fn get_random_bytes(size : Int) -> Array[Int] {
   bytes
 }
 
-// Internal function to generate ID with given alphabet, size, and random function
-
-///|
+///| Internal function to generate ID with given alphabet, size, and random function
 fn generate(
   alphabet : String,
   size : Int,
@@ -105,19 +93,16 @@ fn generate(
   id
 }
 
-// Main nanoid function - generates URL-friendly unique ID
-// Default version: nanoid()
-// Compatible with: nanoid() or nanoid(size)
-
-///|
+///| Main nanoid function - generates URL-friendly unique ID
+/// Generates secure random IDs using the default URL-safe alphabet
+/// Usage: nanoid() generates 21-character ID, nanoid(size=10) generates 10-character ID
 pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> String raise NanoidError {
   generate(url_alphabet, size, get_random_bytes)
 }
 
-// Custom alphabet function - returns a nanoid generator with custom alphabet
-// Compatible with: custom_alphabet(alphabet, size)
-
-///|
+///| Custom alphabet function - returns a nanoid generator with custom alphabet
+/// Creates a generator function that uses the specified alphabet and size
+/// Usage: let gen = custom_alphabet("abc123", size=8); let id = gen()
 pub fn custom_alphabet(
   alphabet : String,
   size~ : Int = DEFAULT_SIZE
@@ -133,10 +118,9 @@ pub fn custom_alphabet(
   }
 }
 
-// Custom random function - allows custom random generator
-// Compatible with: custom_random(alphabet, size, random)
-
-///|
+///| Custom random function - allows custom random generator
+/// Creates a generator with custom alphabet, size, and random function
+/// Usage: let gen = custom_random(alphabet, size, random_fn); let id = gen()
 pub fn custom_random(
   alphabet : String,
   size : Int,
@@ -154,77 +138,52 @@ pub fn custom_random(
 // ========== Character Sets & Alphabet Presets ==========
 // Based on nanoid-dictionary (https://github.com/CyberAP/nanoid-dictionary)
 
-// Numbers from 0 to 9
-
-///|
+///| Numbers from 0 to 9
 pub let numbers = "0123456789"
 
-// Lowercase English letters
-
-///|
+///| Lowercase English letters
 pub let lowercase = "abcdefghijklmnopqrstuvwxyz"
 
-// Uppercase English letters
-
-///|
+///| Uppercase English letters
 pub let uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-// Combination of lowercase, uppercase letters and numbers
-// Does not include any symbols or special characters
-
-///|
+///| Combination of lowercase, uppercase letters and numbers
+/// Does not include any symbols or special characters
 pub let alphanumeric = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
-// Lowercase hexadecimal characters: 0123456789abcdef
-
-///|
+///| Lowercase hexadecimal characters
 pub let hex = "0123456789abcdef"
 
-// Uppercase hexadecimal characters: 0123456789ABCDEF
-
-///|
+///| Uppercase hexadecimal characters
 pub let hex_upper = "0123456789ABCDEF"
 
-// Numbers and English alphabet without lookalikes
-// Removes: 1, l, I, 0, O, o, u, v, 5, S, s, 2, Z
-// Complete set: 346789ABCDEFGHJKLMNPQRTUVWXYabcdefghijkmnpqrtwxyz
-
-///|
+///| Numbers and English alphabet without lookalikes
+/// Removes: 1, l, I, 0, O, o, u, v, 5, S, s, 2, Z
+/// Complete set: 346789ABCDEFGHJKLMNPQRTUVWXYabcdefghijkmnpqrtwxyz
 pub let nolookalikes = "346789ABCDEFGHJKLMNPQRTUVWXYabcdefghijkmnpqrtwxyz"
 
-// Same as nolookalikes but with removed vowels and some letters: 3, 4, x, X, V
-// This should protect from accidentally getting obscene words in generated strings
-// Complete set: 6789BCDFGHJKLMNPQRTWbcdfghjkmnpqrtwz
-
-///|
+///| Same as nolookalikes but with additional removed characters: 3, 4, x, X, V
+/// Also removes vowels to protect from accidentally getting obscene words in generated strings
+/// Complete set: 6789BCDFGHJKLMNPQRTWbcdfghjkmnpqrtwz
 pub let nolookalikes_safe = "6789BCDFGHJKLMNPQRTWbcdfghjkmnpqrtwz"
 
-// ASCII letters and digits (equivalent to [A-Za-z0-9])
-// Useful for environments that require strict ASCII compatibility
-
-///|
+///| ASCII letters and digits (equivalent to [A-Za-z0-9])
+/// Useful for environments that require strict ASCII compatibility
 pub let ascii_letters_digits = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
-// Base62 encoding alphabet (numbers, uppercase, lowercase)
-// Compatible with most base62 implementations
-
-///|
+///| Base62 encoding alphabet (numbers, uppercase, lowercase)
+/// Compatible with most base62 implementations
 pub let base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
-// Base58 encoding alphabet (Bitcoin style - no 0, O, I, l)
-// Used in cryptocurrency and other applications to avoid confusion
-
-///|
+///| Base58 encoding alphabet (Bitcoin style - excludes 0, O, I, l)
+/// Used in cryptocurrency and other applications to avoid character confusion
 pub let base58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"
 
-// URL-safe characters that don't require encoding in most contexts
-// Excludes characters that might be problematic in URLs or file systems
-
-///|
+///| URL-safe characters that don't require encoding in most contexts
+/// Excludes characters that might be problematic in URLs or file systems
+/// Same as the default url_alphabet
 pub let url_safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
 
-// Filename-safe characters for cross-platform compatibility
-// Safe for use in filenames on Windows, macOS, and Linux
-
-///|
+///| Filename-safe characters for cross-platform compatibility
+/// Safe for use in filenames on Windows, macOS, and Linux
 pub let filename_safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"

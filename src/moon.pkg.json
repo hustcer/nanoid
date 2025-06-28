@@ -1,6 +1,6 @@
 {
   "is-main": true,
   "import": [
-    "hustcer/nanoid/lib"
+    {"path": "hustcer/nanoid/lib", "alias": "nanoid"}
   ]
 }

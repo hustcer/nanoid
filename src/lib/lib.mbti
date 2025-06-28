@@ -3,9 +3,15 @@ package "hustcer/nanoid/lib"
 // Values
 let alphanumeric : String
 
-fn custom_alphabet(String, size~ : Int = ..) -> () -> String
+let base58 : String
 
-fn custom_random(String, Int, (Int) -> Array[Int]) -> () -> String
+let base62 : String
+
+fn custom_alphabet(String, size~ : Int = ..) -> (() -> String raise NanoidError) raise NanoidError
+
+fn custom_random(String, Int, (Int) -> Array[Int]) -> (() -> String raise NanoidError) raise NanoidError
+
+let filename_safe : String
 
 let hex : String
 
@@ -13,7 +19,11 @@ let hex_upper : String
 
 let lowercase : String
 
-fn nanoid(size~ : Int = ..) -> String
+fn nanoid(size~ : Int = ..) -> String raise NanoidError
+
+let nolookalikes : String
+
+let nolookalikes_safe : String
 
 let numbers : String
 
@@ -21,7 +31,10 @@ let uppercase : String
 
 let url_alphabet : String
 
+let url_safe : String
+
 // Types and methods
+type NanoidError
 
 // Type aliases
 

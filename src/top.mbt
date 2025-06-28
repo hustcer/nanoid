@@ -10,13 +10,13 @@ fn main {
 
   // Basic usage with error handling
   try {
-    let id1 = @lib.nanoid()
+    let id1 = @nanoid.nanoid()
     println("Generated ID: \{id1}")
   } catch {
     _ => println("Error generating default ID")
   }
   try {
-    let id2 = @lib.nanoid(size=10)
+    let id2 = @nanoid.nanoid(size=10)
     println("Custom length (10): \{id2}")
   } catch {
     _ => println("Error generating custom size ID")
@@ -24,14 +24,14 @@ fn main {
 
   // Custom alphabet with error handling
   try {
-    let hex_nanoid = @lib.custom_alphabet("1234567890abcdef", size=10)
+    let hex_nanoid = @nanoid.custom_alphabet("1234567890abcdef", size=10)
     let id3 = hex_nanoid()
     println("Custom alphabet (hex): \{id3}")
   } catch {
     _ => println("Error with custom alphabet (hex)")
   }
   try {
-    let hex_nanoid_default = @lib.custom_alphabet("1234567890abcdef")
+    let hex_nanoid_default = @nanoid.custom_alphabet("1234567890abcdef")
     let id5 = hex_nanoid_default()
     println("Custom alphabet with default size: \{id5}")
   } catch {
@@ -39,22 +39,22 @@ fn main {
   }
 
   // Display preset alphabets (these don't throw errors)
-  println("URL Alphabet: \{@lib.url_alphabet}")
-  println("Numbers only: \{@lib.numbers}")
-  println("Hex alphabet: \{@lib.hex}")
-  println("Hex upper: \{@lib.hex_upper}")
-  println("Alphanumeric: \{@lib.alphanumeric}")
+  println("URL Alphabet: \{@nanoid.url_alphabet}")
+  println("Numbers only: \{@nanoid.numbers}")
+  println("Hex alphabet: \{@nanoid.hex}")
+  println("Hex upper: \{@nanoid.hex_upper}")
+  println("Alphanumeric: \{@nanoid.alphanumeric}")
 
   // Demonstrate error handling with invalid input
   println("\n=== Error Handling Demo ===")
   try {
-    let _bad_id = @lib.nanoid(size=-1)
+    let _bad_id = @nanoid.nanoid(size=-1)
     println("This shouldn't print")
   } catch {
     _ => println("✓ Successfully caught error for negative size")
   }
   try {
-    let _bad_generator = @lib.custom_alphabet("")
+    let _bad_generator = @nanoid.custom_alphabet("")
     println("This shouldn't print either")
   } catch {
     _ => println("✓ Successfully caught error for empty alphabet")

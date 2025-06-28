@@ -18,15 +18,22 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 
 ## Quick Start
 
-### Import the Library
+1. Add this module as a dependency to your MoonBit project.
 
-```moonbit
-// Import the entire nanoid module
-import nanoid
+   ```bash
+   moon update
+   moon add hustcer/nanoid
+   ```
 
-// Or import specific functions
-import @nanoid.{ nanoid, custom_alphabet }
-```
+2. Import `hustcer/nanoid` package where you need it.
+
+   ```json
+   {
+     "import": [
+        { "path": "hustcer/nanoid/lib", "alias": "nanoid" }
+      ]
+   }
+   ```
 
 ### Basic Usage
 
@@ -150,7 +157,6 @@ Based on [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary), we p
 ### Usage Examples
 
 ```moonbit
-import nanoid
 
 // Use different alphabets for different purposes
 let uuid_like = @nanoid.custom_alphabet(@nanoid.hex, size=32)
@@ -158,86 +164,6 @@ let readable = @nanoid.custom_alphabet(@nanoid.nolookalikes, size=8)
 let safe_public = @nanoid.custom_alphabet(@nanoid.nolookalikes_safe, size=6)
 let crypto_style = @nanoid.custom_alphabet(@nanoid.base58, size=16)
 ```
-
-## Installation
-
-### Using Moon Package Manager
-
-Add nanoid to your project's `moon.pkg.json`:
-
-```json
-{
-  "deps": {
-    "hustcer/nanoid": "^0.1.0"
-  }
-}
-```
-
-Or add it directly from a Git repository:
-
-```json
-{
-  "deps": {
-    "hustcer/nanoid": "github:hustcer/nanoid"
-  }
-}
-```
-
-### Local Development
-
-Clone this repository and add it as a local dependency:
-
-```json
-{
-  "deps": {
-    "nanoid": "./path/to/nanoid"
-  }
-}
-```
-
-## Error Handling
-
-All functions that can fail return `NanoidError` instead of panicking:
-
-```moonbit
-// Invalid size
-try {
-  let bad_id = @nanoid.nanoid(size=-1)
-} catch {
-  @nanoid.NanoidError(msg) => println("Caught: \{msg}")
-}
-
-// Empty alphabet
-try {
-  let bad_generator = @nanoid.custom_alphabet("")
-} catch {
-  @nanoid.NanoidError(msg) => println("Caught: \{msg}")
-}
-
-// Alphabet too long (>256 chars)
-try {
-  let huge_alphabet = "..." // 300+ characters
-  let bad_generator = @nanoid.custom_alphabet(huge_alphabet)
-} catch {
-  @nanoid.NanoidError(msg) => println("Caught: \{msg}")
-}
-```
-
-## Security
-
-- Uses cryptographically secure random number generation
-- Implements uniform distribution to avoid modulo bias
-- All algorithms are well-documented and tested
-- No predictable patterns in generated IDs
-
-## Performance
-
-Nanoid is designed for high performance:
-
-- Minimal memory allocations
-- Efficient bit masking for uniform distribution
-- Optimized loop structures
-- No external dependencies
 
 ## Testing
 

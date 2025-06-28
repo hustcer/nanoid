@@ -1,5 +1,7 @@
 # MoonBit Nanoid
 
+**WARN**: Due to [this issue](https://github.com/moonbitlang/core/issues/1616) this library may not work as expected, **DO NOT** use it.
+
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A tiny, secure, URL-friendly, unique string ID generator for [MoonBit](https://moonbitlang.com/).

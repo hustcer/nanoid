@@ -1,10 +1,10 @@
 {
   "name": "hustcer/nanoid",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "readme": "README.md",
   "repository": "https://github.com/hustcer/nanoid",
   "license": "MIT",
   "keywords": ["id", "generator", "nanoid", "uuid", "random", "unique"],
-  "description": "A tiny, secure, URL-friendly, unique string ID generator for MoonBit",
+  "description": "A MoonBit port of the NanoID library",
   "source": "src"
 }

@@ -1,0 +1,35 @@
+# Description:
+#   - Nanoid Generation Check
+
+name: CI
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - develop
+
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  nanoid-check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest, macos-13]
+    runs-on: ${{ matrix.os }}
+    name: Setup MoonBit@${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Moonbit
+        uses: hustcer/setup-moonbit@main
+
+      - name: Check Nanoid Generation
+        run: |
+          moon version --all
+          moon test --target all
+          moon run src
+

@@ -220,16 +220,6 @@ The test suite includes:
 - Distribution quality tests
 - All predefined alphabet tests
 
-## Comparison with UUID
-
-| Aspect                | Nanoid                             | UUID v4             |
-| --------------------- | ---------------------------------- | ------------------- |
-| Size                  | 21 chars                           | 36 chars            |
-| Alphabet              | 64 chars (`A-Za-z0-9_-`)           | 16 chars (`0-9a-f`) |
-| Random bits           | 126                                | 122                 |
-| URL-safe              | ✅                                 | ❌ (needs encoding) |
-| Collision probability | ~1 in billion for 103 trillion IDs | Similar             |
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
@@ -238,7 +228,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - Original [Nano ID](https://github.com/ai/nanoid) by Andrey Sitnik
 - [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary) for alphabet definitions
-- MoonBit team for the excellent language and toolchain
 
 ## Contributing
 

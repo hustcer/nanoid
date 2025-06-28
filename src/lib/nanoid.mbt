@@ -13,6 +13,8 @@ pub let url_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123
 const DEFAULT_SIZE = 21
 
 // Global counter to add entropy across function calls
+
+///|
 let call_counter : Ref[Int] = { val: 0 }
 
 // Internal function to generate random bytes
@@ -21,20 +23,19 @@ let call_counter : Ref[Int] = { val: 0 }
 fn get_random_bytes(size : Int) -> Array[Int] {
   // Increment call counter for additional entropy
   call_counter.val = call_counter.val + 1
-
   let rng = @random.Rand::new()
   let bytes = Array::make(size, 0)
 
   // Generate some entropy based on call counter and previous values
   let mut entropy_accumulator = call_counter.val
-
   for i = 0; i < size; i = i + 1 {
     // Get base random value
     let base_random = rng.int(limit=256)
 
     // Mix with entropy accumulator for better randomness
-    entropy_accumulator = (entropy_accumulator * 1103515245 + 12345) % 2147483647
-    let entropy_byte = (entropy_accumulator / 65536) % 256
+    entropy_accumulator = (entropy_accumulator * 1103515245 + 12345) %
+      2147483647
+    let entropy_byte = entropy_accumulator / 65536 % 256
 
     // Combine base random with entropy
     bytes[i] = (base_random + entropy_byte + i * 17) % 256

@@ -125,13 +125,13 @@ test "preset_alphabets_usage" {
   }
 }
 
-// // Test edge case: single character alphabet
-// test "single_character_alphabet" {
-//   let single_char_generator = custom_alphabet("X", size=5)
-//   let id = single_char_generator()
+// Test edge case: single character alphabet
+test "single_character_alphabet" {
+  let single_char_generator = custom_alphabet("X", size=5)
+  let id = single_char_generator()
 
-//   assert_eq(id, "XXXXX")
-// }
+  assert_eq(id, "XXXXX")
+}
 
 // Test edge case: size of 1
 test "size_one" {

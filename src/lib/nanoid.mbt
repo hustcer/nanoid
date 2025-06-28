@@ -61,6 +61,16 @@ fn generate(
     abort("Size must be positive")
   }
 
+  // Special case: single character alphabet - no randomness needed
+  if alphabet_length == 1 {
+    let single_char = alphabet.char_at(0).to_string()
+    let mut id = ""
+    for i = 0; i < size; i = i + 1 {
+      id = id + single_char
+    }
+    return id
+  }
+
   // Calculate mask for uniform distribution (avoid modulo bias)
   let mut mask = 1
   while mask < alphabet_length {

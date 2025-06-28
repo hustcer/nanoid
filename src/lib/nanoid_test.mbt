@@ -1,6 +1,8 @@
 // MoonBit nanoid library tests
 // Tests for all public functions and edge cases
 
+// ========== Basic Functionality Tests ==========
+
 // Test basic nanoid generation with default parameters
 
 ///|
@@ -38,6 +40,8 @@ test "nanoid_uniqueness" {
   assert_not_eq(id2, id3)
   assert_not_eq(id1, id3)
 }
+
+// ========== Custom Alphabet Tests ==========
 
 // Test custom alphabet functionality
 
@@ -84,6 +88,8 @@ test "custom_alphabet_numbers" {
   }
 }
 
+// ========== Custom Random Function Tests ==========
+
 // Test custom random function
 
 ///|
@@ -106,6 +112,8 @@ test "custom_random_deterministic" {
   assert_eq(id2.length(), 6)
   assert_eq(id1, id2) // Should be identical with deterministic random
 }
+
+// ========== Alphabet Presets Tests ==========
 
 // Test alphabet presets
 
@@ -136,6 +144,102 @@ test "preset_alphabets_usage" {
     assert_true(hex.contains(char.to_string()))
   }
 }
+
+// ========== Extended Dictionary Tests ==========
+
+// Test nolookalikes alphabet
+
+///|
+test "nolookalikes_alphabet" {
+  let generator = custom_alphabet(nolookalikes, size=20)
+  let id = generator()
+  assert_eq(id.length(), 20)
+
+  // Verify no lookalike characters appear
+  for i = 0; i < id.length(); i = i + 1 {
+    let char = id.char_at(i)
+    // Should not contain: 1, l, I, 0, O, o, u, v, 5, S, s, 2, Z
+    assert_true(char != '1' && char != 'l' && char != 'I')
+    assert_true(char != '0' && char != 'O' && char != 'o')
+    assert_true(char != 'u' && char != 'v' && char != '5')
+    assert_true(char != 'S' && char != 's' && char != '2' && char != 'Z')
+    assert_true(nolookalikes.contains(char.to_string()))
+  }
+}
+
+// Test nolookalikes_safe alphabet
+
+///|
+test "nolookalikes_safe_alphabet" {
+  let generator = custom_alphabet(nolookalikes_safe, size=15)
+  let id = generator()
+  assert_eq(id.length(), 15)
+
+  // Verify no vowels or problematic characters
+  for i = 0; i < id.length(); i = i + 1 {
+    let char = id.char_at(i)
+    // Should not contain vowels: a, e, i, o, u, A, E, I, O, U
+    assert_true(
+      char != 'a' && char != 'e' && char != 'i' && char != 'o' && char != 'u',
+    )
+    assert_true(
+      char != 'A' && char != 'E' && char != 'I' && char != 'O' && char != 'U',
+    )
+    // Should not contain: 3, 4, x, X, V
+    assert_true(
+      char != '3' && char != '4' && char != 'x' && char != 'X' && char != 'V',
+    )
+    assert_true(nolookalikes_safe.contains(char.to_string()))
+  }
+}
+
+// Test base58 alphabet (Bitcoin style)
+
+///|
+test "base58_alphabet" {
+  let generator = custom_alphabet(base58, size=12)
+  let id = generator()
+  assert_eq(id.length(), 12)
+
+  // Verify no confusing characters
+  for i = 0; i < id.length(); i = i + 1 {
+    let char = id.char_at(i)
+    // Should not contain: 0, O, I, l
+    assert_true(char != '0' && char != 'O' && char != 'I' && char != 'l')
+    assert_true(base58.contains(char.to_string()))
+  }
+}
+
+// Test base62 alphabet
+
+///|
+test "base62_alphabet" {
+  let generator = custom_alphabet(base62, size=10)
+  let id = generator()
+  assert_eq(id.length(), 10)
+  for i = 0; i < id.length(); i = i + 1 {
+    let char = id.char_at(i)
+    assert_true(base62.contains(char.to_string()))
+  }
+}
+
+// Test url_safe and filename_safe alphabets
+
+///|
+test "safe_alphabets" {
+  let url_generator = custom_alphabet(url_safe, size=8)
+  let filename_generator = custom_alphabet(filename_safe, size=8)
+  let url_id = url_generator()
+  let filename_id = filename_generator()
+  assert_eq(url_id.length(), 8)
+  assert_eq(filename_id.length(), 8)
+
+  // Both should be equivalent to url_alphabet in this implementation
+  assert_eq(url_safe, filename_safe)
+  assert_eq(url_safe, url_alphabet)
+}
+
+// ========== Edge Cases Tests ==========
 
 // Test edge case: single character alphabet
 
@@ -186,6 +290,8 @@ test "long_alphabet" {
   let id = generator()
   assert_eq(id.length(), 10)
 }
+
+// ========== Distribution and Quality Tests ==========
 
 // Test distribution is reasonable (not perfect randomness test, but basic check)
 

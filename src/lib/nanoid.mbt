@@ -3,10 +3,12 @@
 // API compatible with the official nanoid JavaScript library
 
 // Custom error type for nanoid operations
+
 ///|
 suberror NanoidError String
 
 // Default URL-friendly alphabet (same order as official nanoid)
+// Compatible with official nanoid: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-
 
 ///|
 pub let url_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
@@ -105,6 +107,7 @@ fn generate(
 
 // Main nanoid function - generates URL-friendly unique ID
 // Default version: nanoid()
+// Compatible with: nanoid() or nanoid(size)
 
 ///|
 pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> String raise NanoidError {
@@ -148,22 +151,80 @@ pub fn custom_random(
   fn() -> String raise NanoidError { generate(alphabet, size, random) }
 }
 
-// Common alphabet presets for convenience (not part of official API)
+// ========== Character Sets & Alphabet Presets ==========
+// Based on nanoid-dictionary (https://github.com/CyberAP/nanoid-dictionary)
+
+// Numbers from 0 to 9
 
 ///|
 pub let numbers = "0123456789"
 
+// Lowercase English letters
+
 ///|
 pub let lowercase = "abcdefghijklmnopqrstuvwxyz"
+
+// Uppercase English letters
 
 ///|
 pub let uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+// Combination of lowercase, uppercase letters and numbers
+// Does not include any symbols or special characters
+
 ///|
 pub let alphanumeric = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+// Lowercase hexadecimal characters: 0123456789abcdef
 
 ///|
 pub let hex = "0123456789abcdef"
 
+// Uppercase hexadecimal characters: 0123456789ABCDEF
+
 ///|
 pub let hex_upper = "0123456789ABCDEF"
+
+// Numbers and English alphabet without lookalikes
+// Removes: 1, l, I, 0, O, o, u, v, 5, S, s, 2, Z
+// Complete set: 346789ABCDEFGHJKLMNPQRTUVWXYabcdefghijkmnpqrtwxyz
+
+///|
+pub let nolookalikes = "346789ABCDEFGHJKLMNPQRTUVWXYabcdefghijkmnpqrtwxyz"
+
+// Same as nolookalikes but with removed vowels and some letters: 3, 4, x, X, V
+// This should protect from accidentally getting obscene words in generated strings
+// Complete set: 6789BCDFGHJKLMNPQRTWbcdfghjkmnpqrtwz
+
+///|
+pub let nolookalikes_safe = "6789BCDFGHJKLMNPQRTWbcdfghjkmnpqrtwz"
+
+// ASCII letters and digits (equivalent to [A-Za-z0-9])
+// Useful for environments that require strict ASCII compatibility
+
+///|
+pub let ascii_letters_digits = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+// Base62 encoding alphabet (numbers, uppercase, lowercase)
+// Compatible with most base62 implementations
+
+///|
+pub let base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+// Base58 encoding alphabet (Bitcoin style - no 0, O, I, l)
+// Used in cryptocurrency and other applications to avoid confusion
+
+///|
+pub let base58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"
+
+// URL-safe characters that don't require encoding in most contexts
+// Excludes characters that might be problematic in URLs or file systems
+
+///|
+pub let url_safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
+
+// Filename-safe characters for cross-platform compatibility
+// Safe for use in filenames on Windows, macOS, and Linux
+
+///|
+pub let filename_safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"

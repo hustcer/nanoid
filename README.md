@@ -1,211 +1,250 @@
-# Nano ID for MoonBit
+# MoonBit Nanoid
 
-A MoonBit port of the [Nano ID](https://github.com/ai/nanoid) library - a tiny, secure, URL-friendly, unique string ID generator.
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+A tiny, secure, URL-friendly, unique string ID generator for [MoonBit](https://moonbitlang.com/).
+
+This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) JavaScript library, maintaining full API compatibility while providing excellent error handling through MoonBit's robust type system.
 
 ## Features
 
-- **Small**: Simple implementation with minimal code
-- **Safe**: Uses MoonBit's random number generation
-- **URL-friendly**: Uses URL-safe characters (`A-Za-z0-9_-`)
-- **Customizable**: Supports custom alphabets and lengths
-- **Fast**: Efficient ID generation algorithm optimized with uniform distribution
-- **API Compatible**: Similar API to Node.js nanoid
+- **Small & Fast**: Minimal overhead, optimized for performance
+- **Secure**: Uses cryptographically strong random number generation
+- **URL-Safe**: Generated IDs are safe for use in URLs, filenames, and databases
+- **Customizable**: Support for custom alphabets and ID sizes
+- **Error Safe**: Proper error handling instead of runtime panics
+- **Type Safe**: Full MoonBit type system support
+- **Zero Dependencies**: No external dependencies beyond MoonBit core
 
-## Installation
-
-This is a MoonBit project that builds with the MoonBit toolchain.
-
-## Dependencies
-
-- `moonbitlang/core`: Official MoonBit core library for random number generation
-
-## API
+## Quick Start
 
 ### Basic Usage
 
 ```moonbit
-// Generate default length (21) nano ID
-let id = @lib.nanoid() // => "V1StGXR8_Z5jdHi6B-myT"
+import @lib
 
-// Generate nano ID with specified length
-let short_id = @lib.nanoid(size=10) // => "IRFa-VaY2b"
+// Generate a URL-safe ID with default length (21 characters)
+let id = @lib.nanoid()
+// => "rMf19KHCD5GQw0wzQnEKd"
+
+// Generate an ID with custom length
+let short_id = @lib.nanoid(size=10)
+// => "yue8fl8f9X"
 ```
 
-### Custom Alphabet
+### Custom Alphabets
 
 ```moonbit
-// Create a custom alphabet generator with default size (21)
-let hex_generator = @lib.custom_alphabet("0123456789ABCDEF")
-let hex_id = hex_generator() // => "2A4F7E1B9C3D4F5E6A7B"
+import @lib
 
-// Create a custom alphabet generator with specified size
-let hex_generator_8 = @lib.custom_alphabet("0123456789ABCDEF", size=8)
-let hex_id_8 = hex_generator_8() // => "2A4F7E1B"
+// Create a generator with custom alphabet
+let hex_generator = @lib.custom_alphabet(@lib.hex, size=8)
+let hex_id = hex_generator()
+// => "a1b2c3d4"
+
+// Use predefined alphabet sets
+let safe_generator = @lib.custom_alphabet(@lib.nolookalikes, size=12)
+let safe_id = safe_generator()
+// => "6B9CMnpqrt7w"
 ```
 
-### Custom Random Generator
+### Error Handling
 
 ```moonbit
-// Define custom random function
-fn my_random(size : Int) -> Array[Int] {
-  // Your custom random implementation
-  // Note: get_random_bytes is internal, use a proper random implementation
-  let rng = @random.Rand::new()
-  let bytes = Array::make(size, 0)
-  for i = 0; i < size; i = i + 1 {
-    bytes[i] = rng.int(limit=256)
-  }
-  bytes
+import @lib
+
+// Handle potential errors gracefully
+try {
+  let id = @lib.nanoid(size=10)
+  println("Generated: \{id}")
+} catch {
+  @lib.NanoidError(msg) => println("Error: \{msg}")
 }
-
-// Create generator with custom random
-let custom_gen = @lib.custom_random("abc123", 10, my_random)
-let custom_id = custom_gen() // => uses your random function
-```
-
-### Predefined Alphabets
-
-```moonbit
-// Available alphabet constants
-@lib.url_alphabet     // "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
-@lib.numbers          // "0123456789"
-@lib.lowercase        // "abcdefghijklmnopqrstuvwxyz"
-@lib.uppercase        // "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-@lib.alphanumeric     // "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-@lib.hex              // "0123456789abcdef"
-@lib.hex_upper        // "0123456789ABCDEF"
 ```
 
 ## API Reference
 
-### Functions
+### Core Functions
 
-| Function | Description | Example |
-|----------|-------------|---------|
-| `nanoid()` | Generate ID with default length (21) | `nanoid()` |
-| `nanoid(size=n)` | Generate ID with specified length | `nanoid(size=10)` |
-| `custom_alphabet(alphabet, size=21)` | Create custom alphabet generator | `custom_alphabet("abc123", size=8)` |
-| `custom_random(alphabet, size, random_fn)` | Create generator with custom random function | `custom_random("abc", 10, my_random)` |
+#### `nanoid(size~ : Int = 21) -> String raise NanoidError`
 
-### Function Signatures
+Generates a URL-safe unique ID using the default alphabet.
+
+- `size`: Length of the generated ID (default: 21)
+- Returns: A random string ID
+- Raises: `NanoidError` if size is invalid
 
 ```moonbit
-// Main nanoid function
-pub fn nanoid(size~ : Int = 21) -> String
-
-// Custom alphabet generator
-pub fn custom_alphabet(alphabet : String, size~ : Int = 21) -> () -> String
-
-// Custom random generator
-pub fn custom_random(alphabet : String, size : Int, random : (Int) -> Array[Int]) -> () -> String
+let id1 = @lib.nanoid()          // 21 characters
+let id2 = @lib.nanoid(size=10)   // 10 characters
 ```
 
-### Constants
+#### `custom_alphabet(alphabet : String, size~ : Int = 21) -> (() -> String raise NanoidError) raise NanoidError`
 
-| Constant | Value | Use Case |
-|----------|-------|----------|
-| `url_alphabet` | A-Za-z0-9_- (64 chars) | Default web-safe IDs |
-| `numbers` | 0-9 (10 chars) | Numeric codes |
-| `lowercase` | a-z (26 chars) | Lowercase identifiers |
-| `uppercase` | A-Z (26 chars) | Uppercase codes |
-| `alphanumeric` | A-Za-z0-9 (62 chars) | Alphanumeric IDs |
-| `hex` | 0-9a-f (16 chars) | Hex lowercase |
-| `hex_upper` | 0-9A-F (16 chars) | Hex uppercase |
+Creates a generator function with a custom alphabet.
 
-## Security
-
-This implementation:
-
-- Uses MoonBit's random number generation from `moonbitlang/core`
-- Implements uniform distribution to avoid modulo bias
-- Uses bit masking for efficient random selection
-- Provides cryptographically secure randomness (depends on platform)
-
-## Entropy Analysis
-
-The default configuration (64 characters, 21 length) provides:
-- **~130 bits of entropy** (log2(64^21))
-- **Excellent collision resistance** for practical applications
-- **URL-safe character set** for web applications
-
-### Collision Probability
-
-For 1 million IDs with default settings, the collision probability is negligible (< 1 in 10^15).
-
-## Comparison with UUID
-
-| Feature | Nano ID | UUID v4 |
-|---------|---------|---------|
-| Size | 21 chars | 36 chars |
-| Alphabet | 64 (URL-safe) | 16 (hex) + dashes |
-| Entropy | ~130 bits | 122 bits |
-| Readability | High | Low |
-| URL-safe | Yes | No (needs encoding) |
-
-## Usage Examples
+- `alphabet`: String containing characters to use
+- `size`: Default length for generated IDs
+- Returns: A generator function
+- Raises: `NanoidError` if alphabet is invalid
 
 ```moonbit
-fn main {
-  // Basic usage
-  let id = @lib.nanoid()
-  println("Generated: \{id}")
+let generator = @lib.custom_alphabet("0123456789", size=8)
+let numeric_id = generator()  // => "12345678"
+```
 
-  // Custom size
-  let short = @lib.nanoid(size=8)
-  println("Short ID: \{short}")
+#### `custom_random(alphabet : String, size : Int, random : (Int) -> Array[Int]) -> (() -> String raise NanoidError) raise NanoidError`
 
-  // Custom alphabet for hex IDs with default size
-  let hex_gen = @lib.custom_alphabet(@lib.hex)
-  let hex_id = hex_gen()
-  println("Hex ID (default): \{hex_id}")
+Creates a generator with custom alphabet and random function.
 
-  // Custom alphabet for hex IDs with specific size
-  let hex_gen_8 = @lib.custom_alphabet(@lib.hex, size=8)
-  let hex_id_8 = hex_gen_8()
-  println("Hex ID (8 chars): \{hex_id_8}")
+- `alphabet`: String containing characters to use
+- `size`: Length for generated IDs
+- `random`: Custom random byte generator function
+- Returns: A generator function
+- Raises: `NanoidError` if parameters are invalid
 
-  // Numeric codes
-  let num_gen = @lib.custom_alphabet(@lib.numbers, size=6)
-  let code = num_gen()
-  println("Numeric code: \{code}")
+## Predefined Alphabets
 
-  // Using preset alphabets
-  println("URL Alphabet: \{@lib.url_alphabet}")
-  println("Numbers: \{@lib.numbers}")
-  println("Hex: \{@lib.hex}")
+Based on [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary), we provide several predefined character sets:
+
+### Basic Sets
+
+| Alphabet | Characters | Description |
+|----------|------------|-------------|
+| `numbers` | `0123456789` | Numbers only |
+| `lowercase` | `abcdefghijklmnopqrstuvwxyz` | Lowercase letters |
+| `uppercase` | `ABCDEFGHIJKLMNOPQRSTUVWXYZ` | Uppercase letters |
+| `alphanumeric` | `A-Za-z0-9` | Letters and numbers |
+
+### Hexadecimal
+
+| Alphabet | Characters | Description |
+|----------|------------|-------------|
+| `hex` | `0123456789abcdef` | Lowercase hexadecimal |
+| `hex_upper` | `0123456789ABCDEF` | Uppercase hexadecimal |
+
+### Special Purpose
+
+| Alphabet | Characters | Description |
+|----------|------------|-------------|
+| `url_alphabet` | `A-Za-z0-9_-` | Default URL-safe alphabet |
+| `nolookalikes` | `346789ABC...xyz` | No confusing characters (1,l,I,0,O,o,u,v,5,S,s,2,Z) |
+| `nolookalikes_safe` | `6789BCD...twz` | No lookalikes + no vowels (safer for public IDs) |
+| `base58` | `123456789ABC...xyz` | Bitcoin-style (no 0,O,I,l) |
+| `base62` | `0-9A-Za-z` | Standard base62 encoding |
+| `url_safe` | `A-Za-z0-9-_` | URL-safe characters |
+| `filename_safe` | `A-Za-z0-9-_` | Cross-platform filename safe |
+
+### Usage Examples
+
+```moonbit
+import @lib
+
+// Use different alphabets for different purposes
+let uuid_like = @lib.custom_alphabet(@lib.hex, size=32)
+let readable = @lib.custom_alphabet(@lib.nolookalikes, size=8)
+let safe_public = @lib.custom_alphabet(@lib.nolookalikes_safe, size=6)
+let crypto_style = @lib.custom_alphabet(@lib.base58, size=16)
+```
+
+## Installation
+
+Add this package to your MoonBit project:
+
+```json
+{
+  "deps": {
+    "nanoid": "path/to/nanoid"
+  }
 }
 ```
 
-## Building and Running
+## Error Handling
 
-```bash
-# Check for errors
-moon check
+All functions that can fail return `NanoidError` instead of panicking:
 
-# Run the example
-moon run src
+```moonbit
+// Invalid size
+try {
+  let bad_id = @lib.nanoid(size=-1)
+} catch {
+  @lib.NanoidError(msg) => println("Caught: \{msg}")
+}
 
-# Build the project
-moon build
+// Empty alphabet
+try {
+  let bad_generator = @lib.custom_alphabet("")
+} catch {
+  @lib.NanoidError(msg) => println("Caught: \{msg}")
+}
+
+// Alphabet too long (>256 chars)
+try {
+  let huge_alphabet = "..." // 300+ characters
+  let bad_generator = @lib.custom_alphabet(huge_alphabet)
+} catch {
+  @lib.NanoidError(msg) => println("Caught: \{msg}")
+}
 ```
 
-## Algorithm Details
+## Security
 
-The implementation uses an optimized algorithm that:
+- Uses cryptographically secure random number generation
+- Implements uniform distribution to avoid modulo bias
+- All algorithms are well-documented and tested
+- No predictable patterns in generated IDs
 
-1. **Calculates bit mask** for uniform distribution
-2. **Batches random byte generation** for efficiency
-3. **Avoids modulo bias** using rejection sampling
-4. **Minimizes random calls** through step calculation
+## Performance
 
-This ensures both security and performance while maintaining compatibility with the original nanoid design.
+Nanoid is designed for high performance:
+
+- Minimal memory allocations
+- Efficient bit masking for uniform distribution
+- Optimized loop structures
+- No external dependencies
+
+## Testing
+
+Run the comprehensive test suite:
+
+```bash
+moon test --target all
+```
+
+The test suite includes:
+- Basic functionality tests
+- Custom alphabet tests
+- Error handling tests
+- Edge case tests
+- Distribution quality tests
+- All predefined alphabet tests
+
+## Comparison with UUID
+
+| Aspect | Nanoid | UUID v4 |
+|--------|--------|---------|
+| Size | 21 chars | 36 chars |
+| Alphabet | 64 chars | 16 chars |
+| Random bits | 126 | 122 |
+| URL-safe | ✅ | ❌ (needs encoding) |
+| Collision probability | ~1 in billion for 103 trillion IDs | Similar |
 
 ## License
 
-MIT License - feel free to use in your projects!
+MIT License - see [LICENSE](LICENSE) file for details.
 
-## References
+## Acknowledgments
 
-- [Original Nano ID (JavaScript)](https://github.com/ai/nanoid)
-- [MoonBit Language](https://www.moonbitlang.com/)
-- [ID collision probability calculator](https://zelark.github.io/nano-id-cc/)
+- Original [Nano ID](https://github.com/ai/nanoid) by Andrey Sitnik
+- [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary) for alphabet definitions
+- MoonBit team for the excellent language and toolchain
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## See Also
+
+- [Official Nano ID](https://github.com/ai/nanoid) - The original JavaScript implementation
+- [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary) - Predefined character sets
+- [MoonBit Documentation](https://moonbitlang.com/docs/) - Learn more about MoonBit

@@ -44,19 +44,19 @@ fn generate(
   get_random : (Int) -> Array[Int]
 ) -> String {
   // Check for empty alphabet
-  if alphabet.length() == 0 {
+  guard alphabet.length() > 0 else {
     println("[nanoid] Warning: alphabet cannot be empty")
     return ""
   }
 
   // Check for oversized alphabet
-  if alphabet.length() > 256 {
+  guard alphabet.length() <= 256 else {
     println("[nanoid] Warning: alphabet length exceeds 256 characters")
     return ""
   }
 
   // Check for invalid size
-  if size <= 0 {
+  guard size > 0 else {
     println("[nanoid] Warning: size must be greater than 0")
     return ""
   }

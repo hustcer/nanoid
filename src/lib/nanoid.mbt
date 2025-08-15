@@ -18,7 +18,13 @@ pub fn NanoidError::to_string(self : NanoidError) -> String {
     EmptyAlphabet => "Alphabet cannot be empty"
     OversizedAlphabet(len) =>
       "Alphabet length (\{len}) exceeds maximum of 256 characters"
-    InvalidSize(size) => "Size (\{size}) must be greater than 0"
+    InvalidSize(size) => {
+      if size > 1000000 {
+        "Size (\{size}) exceeds maximum allowed size of 1,000,000"
+      } else {
+        "Size (\{size}) must be greater than 0"
+      }
+    }
     RandomGenerationError(msg) => "Random generation failed: \{msg}"
   }
 }
@@ -53,21 +59,43 @@ fn SimpleRng::new(seed : Int64) -> SimpleRng {
   { state: seed }
 }
 
-///| Generate the next random 64-bit integer
+///| Generate the next random 64-bit integer using xorshift64*
 fn next_int64(self : SimpleRng) -> Int64 {
-  // Xorshift algorithm - better quality than LCG
-  self.state = self.state ^ (self.state << 13)
-  self.state = self.state ^ (self.state >> 7)
-  self.state = self.state ^ (self.state << 17)
-  self.state
+  // Xorshift64* algorithm - high quality PRNG
+  // Avoid zero state which would cause the generator to get stuck
+  if self.state == 0L {
+    self.state = 1L
+  }
+
+  self.state = self.state ^ (self.state >> 12)
+  self.state = self.state ^ (self.state << 25)
+  self.state = self.state ^ (self.state >> 27)
+
+  // Multiply by a large odd constant for better distribution
+  self.state * 0x2545F4914F6CDD1DL
 }
 
-///| Generate a random integer in range [0, limit) with better distribution
+///| Generate a random integer in range [0, limit) with uniform distribution
 fn next_int(self : SimpleRng, limit : Int) -> Int {
-  let rand = self.next_int64()
-  // Use absolute value to ensure positive result
-  let positive_rand = if rand < 0L { rand ^ -1L } else { rand }
-  (positive_rand % limit.to_int64()).to_int()
+  if limit <= 0 {
+    return 0
+  }
+
+  // Use rejection sampling to avoid modulo bias
+  let limit_64 = limit.to_int64()
+  let max_valid = (0x7FFFFFFFFFFFFFFFL / limit_64) * limit_64
+
+  let mut rand = self.next_int64()
+  // Ensure positive value
+  rand = if rand < 0L { rand & 0x7FFFFFFFFFFFFFFFL } else { rand }
+
+  // Rejection sampling: retry if value would cause bias
+  while rand >= max_valid {
+    rand = self.next_int64()
+    rand = if rand < 0L { rand & 0x7FFFFFFFFFFFFFFFL } else { rand }
+  }
+
+  (rand % limit_64).to_int()
 }
 
 ///| Internal function to generate secure random bytes
@@ -75,26 +103,26 @@ fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
   // Increment global counter for entropy
   global_call_count.val = global_call_count.val + 1
 
-  // Create a single RNG with better entropy combination
+  // Create high-quality seed using multiple entropy sources
   let count = global_call_count.val.to_int64()
-  let mut seed = 1664525L + count * 1013904223L
+  let size_factor = size.to_int64()
 
-  // Apply hash-like mixing for better distribution
-  seed = seed ^ (seed << 13)
-  seed = seed ^ (seed >> 7)
-  seed = seed ^ (seed << 17)
-  seed = seed + size.to_int64() * 2147483647L
+  // Use SplitMix64-like seeding for better quality
+  let mut seed = count + 0x9E3779B97F4A7C15L
+  seed = (seed ^ (seed >> 30)) * 0xBF58476D1CE4E5B9L
+  seed = (seed ^ (seed >> 27)) * 0x94D049BB133111EBL
+  seed = seed ^ (seed >> 31)
+
+  // Mix in size for additional entropy
+  seed = seed ^ (size_factor * 0x517CC1B727220A95L)
+
   let rng = SimpleRng::new(seed)
   let bytes = Array::make(size, 0)
 
-  // Generate bytes with position-based entropy
+  // Generate bytes directly from RNG without additional mixing
+  // The improved RNG quality makes additional entropy unnecessary
   for i = 0; i < size; i = i + 1 {
-    let base_random = rng.next_int(256)
-    // Add position-based entropy for better distribution
-    let position_entropy = (i * 31 + size * 37 + global_call_count.val * 41) *
-      43 %
-      256
-    bytes[i] = (base_random + position_entropy) % 256
+    bytes[i] = rng.next_int(256)
   }
   Ok(bytes)
 }
@@ -116,8 +144,22 @@ fn generate(
     return error_result(OversizedAlphabet(alphabet.length()))
   }
 
+  // Validate alphabet contains only valid Unicode characters
+  // This helps catch potential encoding issues early
+  for i = 0; i < alphabet.length(); i = i + 1 {
+    match alphabet.get_char(i) {
+      Some(_) => continue
+      None => return error_result(RandomGenerationError("Invalid character in alphabet at position \{i}"))
+    }
+  }
+
   // Check for invalid size
   if size <= 0 {
+    return error_result(InvalidSize(size))
+  }
+
+  // Check for unreasonably large size to prevent memory issues
+  if size > 1000000 {
     return error_result(InvalidSize(size))
   }
   let alphabet_length = alphabet.length()
@@ -130,9 +172,10 @@ fn generate(
   }
 
   // Calculate mask for uniform distribution (avoid modulo bias)
+  // Use bit manipulation for faster mask calculation
   let mut mask = 1
   while mask < alphabet_length {
-    mask = mask * 2
+    mask = mask << 1
   }
   mask = mask - 1
 

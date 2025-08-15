@@ -1,3 +1,4 @@
+// Generated using `moon info`, DON'T EDIT IT
 package "hustcer/nanoid/lib"
 
 // Values
@@ -7,9 +8,9 @@ let base58 : String
 
 let base62 : String
 
-fn custom_alphabet(String, size~ : Int = ..) -> Result[() -> Result[String, NanoidError], NanoidError]
+fn custom_alphabet(String, size? : Int) -> Result[() -> Result[String, NanoidError], NanoidError]
 
-fn custom_alphabet_or_empty(String, size~ : Int = ..) -> () -> String
+fn custom_alphabet_or_empty(String, size? : Int) -> () -> String
 
 fn custom_random(String, Int, (Int) -> Result[Array[Int], NanoidError]) -> Result[() -> Result[String, NanoidError], NanoidError]
 
@@ -23,9 +24,9 @@ let hex_upper : String
 
 let lowercase : String
 
-fn nanoid(size~ : Int = ..) -> Result[String, NanoidError]
+fn nanoid(size? : Int) -> Result[String, NanoidError]
 
-fn nanoid_or_empty(size~ : Int = ..) -> String
+fn nanoid_or_empty(size? : Int) -> String
 
 let nolookalikes : String
 
@@ -39,6 +40,8 @@ let url_alphabet : String
 
 let url_safe : String
 
+// Errors
+
 // Types and methods
 pub enum NanoidError {
   EmptyAlphabet
@@ -46,10 +49,8 @@ pub enum NanoidError {
   InvalidSize(Int)
   RandomGenerationError(String)
 }
-
-impl NanoidError {
-  to_string(Self) -> String
-}
+fn NanoidError::to_string(Self) -> String
+impl Eq for NanoidError
 
 // Type aliases
 

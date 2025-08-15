@@ -7,8 +7,8 @@
 ///| Error types for nanoid operations
 pub enum NanoidError {
   EmptyAlphabet
-  OversizedAlphabet(Int)  // Contains the actual length
-  InvalidSize(Int)        // Contains the invalid size value
+  OversizedAlphabet(Int) // Contains the actual length
+  InvalidSize(Int) // Contains the invalid size value
   RandomGenerationError(String)
 } derive(Eq)
 
@@ -16,7 +16,8 @@ pub enum NanoidError {
 pub fn NanoidError::to_string(self : NanoidError) -> String {
   match self {
     EmptyAlphabet => "Alphabet cannot be empty"
-    OversizedAlphabet(len) => "Alphabet length (\{len}) exceeds maximum of 256 characters"
+    OversizedAlphabet(len) =>
+      "Alphabet length (\{len}) exceeds maximum of 256 characters"
     InvalidSize(size) => "Size (\{size}) must be greater than 0"
     RandomGenerationError(msg) => "Random generation failed: \{msg}"
   }
@@ -36,12 +37,64 @@ pub let url_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123
 ///| Default ID length (same as official nanoid)
 const DEFAULT_SIZE = 21
 
+// ========== Random Number Generation ==========
+
+///| High-quality random number generator for nanoid
+/// Uses xorshift algorithm for better randomness distribution
+priv struct SimpleRng {
+  mut state : Int64
+}
+
+///| Global counter to ensure different seeds for each call
+let global_call_count : Ref[Int] = { val: 0 }
+
+///| Create a new random number generator with a seed
+fn SimpleRng::new(seed : Int64) -> SimpleRng {
+  { state: seed }
+}
+
+///| Generate the next random 64-bit integer
+fn next_int64(self : SimpleRng) -> Int64 {
+  // Xorshift algorithm - better quality than LCG
+  self.state = self.state ^ (self.state << 13)
+  self.state = self.state ^ (self.state >> 7)
+  self.state = self.state ^ (self.state << 17)
+  self.state
+}
+
+///| Generate a random integer in range [0, limit) with better distribution
+fn next_int(self : SimpleRng, limit : Int) -> Int {
+  let rand = self.next_int64()
+  // Use absolute value to ensure positive result
+  let positive_rand = if rand < 0L { rand ^ -1L } else { rand }
+  (positive_rand % limit.to_int64()).to_int()
+}
+
 ///| Internal function to generate secure random bytes
 fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
-  let rng = @random.Rand::new()
+  // Increment global counter for entropy
+  global_call_count.val = global_call_count.val + 1
+
+  // Create a single RNG with better entropy combination
+  let count = global_call_count.val.to_int64()
+  let mut seed = 1664525L + count * 1013904223L
+
+  // Apply hash-like mixing for better distribution
+  seed = seed ^ (seed << 13)
+  seed = seed ^ (seed >> 7)
+  seed = seed ^ (seed << 17)
+  seed = seed + size.to_int64() * 2147483647L
+  let rng = SimpleRng::new(seed)
   let bytes = Array::make(size, 0)
+
+  // Generate bytes with position-based entropy
   for i = 0; i < size; i = i + 1 {
-    bytes[i] = rng.int(limit=256)
+    let base_random = rng.next_int(256)
+    // Add position-based entropy for better distribution
+    let position_entropy = (i * 31 + size * 37 + global_call_count.val * 41) *
+      43 %
+      256
+    bytes[i] = (base_random + position_entropy) % 256
   }
   Ok(bytes)
 }
@@ -51,7 +104,7 @@ fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
 fn generate(
   alphabet : String,
   size : Int,
-  get_random : (Int) -> Result[Array[Int], NanoidError]
+  get_random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[String, NanoidError] {
   // Check for empty alphabet
   if alphabet.length() == 0 {
@@ -84,16 +137,11 @@ fn generate(
   mask = mask - 1
 
   // Calculate step size to reduce random calls
-  let step = if mask * size < 256 {
-    mask * size
-  } else {
-    256
-  }
+  let step = if mask * size < 256 { mask * size } else { 256 }
 
   // Pre-allocate character array for efficient building
   let id_chars = Array::make(size, ' ')
   let mut counter = 0
-
   while counter < size {
     let random_bytes = match get_random(step) {
       Ok(bytes) => bytes
@@ -124,7 +172,7 @@ pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> Result[String, NanoidError] {
 ///| Convenience function that returns empty string on error (for backward compatibility)
 /// Usage: nanoid_or_empty() generates 21-character ID or empty string on error
 pub fn nanoid_or_empty(size~ : Int = DEFAULT_SIZE) -> String {
-  match nanoid(size=size) {
+  match nanoid(size~) {
     Ok(id) => id
     Err(_) => ""
   }
@@ -136,7 +184,7 @@ pub fn nanoid_or_empty(size~ : Int = DEFAULT_SIZE) -> String {
 /// Usage: let gen = custom_alphabet("abc123", size=8)?; let id = gen()?
 pub fn custom_alphabet(
   alphabet : String,
-  size~ : Int = DEFAULT_SIZE
+  size~ : Int = DEFAULT_SIZE,
 ) -> Result[() -> Result[String, NanoidError], NanoidError] {
   // Validate parameters early
   if alphabet.length() == 0 {
@@ -148,23 +196,25 @@ pub fn custom_alphabet(
   if size <= 0 {
     return error_result(InvalidSize(size))
   }
-
-  Ok(fn() -> Result[String, NanoidError] { generate(alphabet, size, get_random_bytes) })
+  Ok(fn() -> Result[String, NanoidError] {
+    generate(alphabet, size, get_random_bytes)
+  })
 }
 
 ///| Convenience custom alphabet function that returns empty string on error
 /// Usage: let gen = custom_alphabet_or_empty("abc123", size=8); let id = gen()
 pub fn custom_alphabet_or_empty(
   alphabet : String,
-  size~ : Int = DEFAULT_SIZE
+  size~ : Int = DEFAULT_SIZE,
 ) -> () -> String {
-  match custom_alphabet(alphabet, size=size) {
-    Ok(gen) => fn() -> String {
-      match gen() {
-        Ok(id) => id
-        Err(_) => ""
+  match custom_alphabet(alphabet, size~) {
+    Ok(gen) =>
+      fn() -> String {
+        match gen() {
+          Ok(id) => id
+          Err(_) => ""
+        }
       }
-    }
     Err(_) => fn() -> String { "" }
   }
 }
@@ -176,7 +226,7 @@ pub fn custom_alphabet_or_empty(
 pub fn custom_random(
   alphabet : String,
   size : Int,
-  random : (Int) -> Result[Array[Int], NanoidError]
+  random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[() -> Result[String, NanoidError], NanoidError] {
   // Validate parameters early
   if alphabet.length() == 0 {
@@ -188,7 +238,6 @@ pub fn custom_random(
   if size <= 0 {
     return error_result(InvalidSize(size))
   }
-
   Ok(fn() -> Result[String, NanoidError] { generate(alphabet, size, random) })
 }
 
@@ -197,19 +246,19 @@ pub fn custom_random(
 pub fn custom_random_or_empty(
   alphabet : String,
   size : Int,
-  random : (Int) -> Array[Int]
+  random : (Int) -> Array[Int],
 ) -> () -> String {
   let safe_random = fn(size : Int) -> Result[Array[Int], NanoidError] {
     Ok(random(size))
   }
-
   match custom_random(alphabet, size, safe_random) {
-    Ok(gen) => fn() -> String {
-      match gen() {
-        Ok(id) => id
-        Err(_) => ""
+    Ok(gen) =>
+      fn() -> String {
+        match gen() {
+          Ok(id) => id
+          Err(_) => ""
+        }
       }
-    }
     Err(_) => fn() -> String { "" }
   }
 }

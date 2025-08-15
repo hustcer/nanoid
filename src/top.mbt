@@ -5,14 +5,24 @@
 fn main {
   println("=== MoonBit Nanoid Library Demo ===")
 
-  // Basic usage with proper error handling
+  // Basic usage with proper error handling - generate multiple IDs to test randomness
   match @nanoid.nanoid() {
-    Ok(id1) => println("Generated ID: \{id1}")
+    Ok(id1) => println("Generated ID 1: \{id1}")
+    Err(e) => println("Error generating ID: \{e.to_string()}")
+  }
+
+  match @nanoid.nanoid() {
+    Ok(id2) => println("Generated ID 2: \{id2}")
+    Err(e) => println("Error generating ID: \{e.to_string()}")
+  }
+
+  match @nanoid.nanoid() {
+    Ok(id3) => println("Generated ID 3: \{id3}")
     Err(e) => println("Error generating ID: \{e.to_string()}")
   }
 
   match @nanoid.nanoid(size=10) {
-    Ok(id2) => println("Custom length (10): \{id2}")
+    Ok(id4) => println("Custom length (10): \{id4}")
     Err(e) => println("Error generating custom length ID: \{e.to_string()}")
   }
 

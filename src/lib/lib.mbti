@@ -7,9 +7,13 @@ let base58 : String
 
 let base62 : String
 
-fn custom_alphabet(String, size~ : Int = ..) -> (() -> String raise NanoidError) raise NanoidError
+fn custom_alphabet(String, size~ : Int = ..) -> Result[() -> Result[String, NanoidError], NanoidError]
 
-fn custom_random(String, Int, (Int) -> Array[Int]) -> (() -> String raise NanoidError) raise NanoidError
+fn custom_alphabet_or_empty(String, size~ : Int = ..) -> () -> String
+
+fn custom_random(String, Int, (Int) -> Result[Array[Int], NanoidError]) -> Result[() -> Result[String, NanoidError], NanoidError]
+
+fn custom_random_or_empty(String, Int, (Int) -> Array[Int]) -> () -> String
 
 let filename_safe : String
 
@@ -19,7 +23,9 @@ let hex_upper : String
 
 let lowercase : String
 
-fn nanoid(size~ : Int = ..) -> String raise NanoidError
+fn nanoid(size~ : Int = ..) -> Result[String, NanoidError]
+
+fn nanoid_or_empty(size~ : Int = ..) -> String
 
 let nolookalikes : String
 
@@ -34,7 +40,16 @@ let url_alphabet : String
 let url_safe : String
 
 // Types and methods
-type NanoidError
+pub enum NanoidError {
+  EmptyAlphabet
+  OversizedAlphabet(Int)
+  InvalidSize(Int)
+  RandomGenerationError(String)
+}
+
+impl NanoidError {
+  to_string(Self) -> String
+}
 
 // Type aliases
 

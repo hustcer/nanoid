@@ -2,6 +2,33 @@
 /// A tiny, secure, URL-friendly, unique string ID generator
 /// MoonBit implementation compatible with the official nanoid JavaScript library
 
+// ========== Error Handling ==========
+
+///| Error types for nanoid operations
+pub enum NanoidError {
+  EmptyAlphabet
+  OversizedAlphabet(Int)  // Contains the actual length
+  InvalidSize(Int)        // Contains the invalid size value
+  RandomGenerationError(String)
+} derive(Eq)
+
+///| Convert NanoidError to string representation
+pub fn NanoidError::to_string(self : NanoidError) -> String {
+  match self {
+    EmptyAlphabet => "Alphabet cannot be empty"
+    OversizedAlphabet(len) => "Alphabet length (\{len}) exceeds maximum of 256 characters"
+    InvalidSize(size) => "Size (\{size}) must be greater than 0"
+    RandomGenerationError(msg) => "Random generation failed: \{msg}"
+  }
+}
+
+///| Helper function to create error results
+fn[T] error_result(error : NanoidError) -> Result[T, NanoidError] {
+  Err(error)
+}
+
+// ========== Constants and Alphabets ==========
+
 ///| Default URL-friendly alphabet (official nanoid order)
 /// Uses the same character order as official nanoid: A-Z, a-z, 0-9, underscore, hyphen
 pub let url_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
@@ -9,69 +36,44 @@ pub let url_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123
 ///| Default ID length (same as official nanoid)
 const DEFAULT_SIZE = 21
 
-///| Global counter to add entropy across function calls
-let call_counter : Ref[Int] = { val: 0 }
-
-///| Internal function to generate random bytes
-fn get_random_bytes(size : Int) -> Array[Int] {
-  // Increment call counter for additional entropy
-  call_counter.val = call_counter.val + 1
+///| Internal function to generate secure random bytes
+fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
   let rng = @random.Rand::new()
   let bytes = Array::make(size, 0)
-
-  // Generate some entropy based on call counter and previous values
-  let mut entropy_accumulator = call_counter.val
   for i = 0; i < size; i = i + 1 {
-    // Get base random value
-    let base_random = rng.int(limit=256)
-
-    // Mix with entropy accumulator for better randomness
-    entropy_accumulator = (entropy_accumulator * 1103515245 + 12345) %
-      2147483647
-    let entropy_byte = entropy_accumulator / 65536 % 256
-
-    // Combine base random with entropy
-    bytes[i] = (base_random + entropy_byte + i * 17) % 256
+    bytes[i] = rng.int(limit=256)
   }
-  bytes
+  Ok(bytes)
 }
 
 ///| Internal function to generate ID with given alphabet, size, and random function
-/// Returns empty string for invalid parameters with warning messages
+/// Returns Result with ID string or NanoidError for invalid parameters
 fn generate(
   alphabet : String,
   size : Int,
-  get_random : (Int) -> Array[Int]
-) -> String {
+  get_random : (Int) -> Result[Array[Int], NanoidError]
+) -> Result[String, NanoidError] {
   // Check for empty alphabet
-  guard alphabet.length() > 0 else {
-    println("[nanoid] Warning: alphabet cannot be empty")
-    return ""
+  if alphabet.length() == 0 {
+    return error_result(EmptyAlphabet)
   }
 
   // Check for oversized alphabet
-  guard alphabet.length() <= 256 else {
-    println("[nanoid] Warning: alphabet length exceeds 256 characters")
-    return ""
+  if alphabet.length() > 256 {
+    return error_result(OversizedAlphabet(alphabet.length()))
   }
 
   // Check for invalid size
-  guard size > 0 else {
-    println("[nanoid] Warning: size must be greater than 0")
-    return ""
+  if size <= 0 {
+    return error_result(InvalidSize(size))
   }
-  let effective_alphabet = alphabet
-  let effective_size = size
-  let alphabet_length = effective_alphabet.length()
+  let alphabet_length = alphabet.length()
 
   // Special case: single character alphabet - no randomness needed
   if alphabet_length == 1 {
-    let single_char = effective_alphabet.get_char(0).unwrap().to_string()
-    let mut id = ""
-    for i = 0; i < effective_size; i = i + 1 {
-      id = id + single_char
-    }
-    return id
+    let single_char = alphabet.get_char(0).unwrap()
+    let chars = Array::make(size, single_char)
+    return Ok(String::from_array(chars))
   }
 
   // Calculate mask for uniform distribution (avoid modulo bias)
@@ -82,58 +84,134 @@ fn generate(
   mask = mask - 1
 
   // Calculate step size to reduce random calls
-  let step = if mask * effective_size < 256 {
-    mask * effective_size
+  let step = if mask * size < 256 {
+    mask * size
   } else {
     256
   }
-  let mut id = ""
+
+  // Pre-allocate character array for efficient building
+  let id_chars = Array::make(size, ' ')
   let mut counter = 0
-  while counter < effective_size {
-    let random_bytes = get_random(step)
+
+  while counter < size {
+    let random_bytes = match get_random(step) {
+      Ok(bytes) => bytes
+      Err(e) => return Err(e)
+    }
     let mut byte_index = 0
-    while byte_index < random_bytes.length() && counter < effective_size {
+    while byte_index < random_bytes.length() && counter < size {
       let byte = random_bytes[byte_index] & mask
       if byte < alphabet_length {
-        let char = effective_alphabet.get_char(byte).unwrap()
-        id = id + char.to_string()
+        let char = alphabet.get_char(byte).unwrap()
+        id_chars[counter] = char
         counter = counter + 1
       }
       byte_index = byte_index + 1
     }
   }
-  id
+  Ok(String::from_array(id_chars))
 }
 
 ///| Main nanoid function - generates URL-friendly unique ID
 /// Generates secure random IDs using the default URL-safe alphabet
-/// Returns empty string with warning for invalid sizes (size <= 0)
+/// Returns Result with ID string or NanoidError for invalid parameters
 /// Usage: nanoid() generates 21-character ID, nanoid(size=10) generates 10-character ID
-pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> String {
+pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> Result[String, NanoidError] {
   generate(url_alphabet, size, get_random_bytes)
+}
+
+///| Convenience function that returns empty string on error (for backward compatibility)
+/// Usage: nanoid_or_empty() generates 21-character ID or empty string on error
+pub fn nanoid_or_empty(size~ : Int = DEFAULT_SIZE) -> String {
+  match nanoid(size=size) {
+    Ok(id) => id
+    Err(_) => ""
+  }
 }
 
 ///| Custom alphabet function - returns a nanoid generator with custom alphabet
 /// Creates a generator function that uses the specified alphabet and size
-/// Returns empty string with warning for invalid parameters (empty alphabet, oversized alphabet, or invalid size)
-/// Usage: let gen = custom_alphabet("abc123", size=8); let id = gen()
+/// Returns Result with generator function or NanoidError for invalid parameters
+/// Usage: let gen = custom_alphabet("abc123", size=8)?; let id = gen()?
 pub fn custom_alphabet(
   alphabet : String,
   size~ : Int = DEFAULT_SIZE
+) -> Result[() -> Result[String, NanoidError], NanoidError] {
+  // Validate parameters early
+  if alphabet.length() == 0 {
+    return error_result(EmptyAlphabet)
+  }
+  if alphabet.length() > 256 {
+    return error_result(OversizedAlphabet(alphabet.length()))
+  }
+  if size <= 0 {
+    return error_result(InvalidSize(size))
+  }
+
+  Ok(fn() -> Result[String, NanoidError] { generate(alphabet, size, get_random_bytes) })
+}
+
+///| Convenience custom alphabet function that returns empty string on error
+/// Usage: let gen = custom_alphabet_or_empty("abc123", size=8); let id = gen()
+pub fn custom_alphabet_or_empty(
+  alphabet : String,
+  size~ : Int = DEFAULT_SIZE
 ) -> () -> String {
-  fn() -> String { generate(alphabet, size, get_random_bytes) }
+  match custom_alphabet(alphabet, size=size) {
+    Ok(gen) => fn() -> String {
+      match gen() {
+        Ok(id) => id
+        Err(_) => ""
+      }
+    }
+    Err(_) => fn() -> String { "" }
+  }
 }
 
 ///| Custom random function - allows custom random generator
 /// Creates a generator with custom alphabet, size, and random function
-/// Returns empty string with warning for invalid alphabet and size parameters
-/// Usage: let gen = custom_random(alphabet, size, random_fn); let id = gen()
+/// Returns Result with generator function or NanoidError for invalid parameters
+/// Usage: let gen = custom_random(alphabet, size, random_fn)?; let id = gen()?
 pub fn custom_random(
+  alphabet : String,
+  size : Int,
+  random : (Int) -> Result[Array[Int], NanoidError]
+) -> Result[() -> Result[String, NanoidError], NanoidError] {
+  // Validate parameters early
+  if alphabet.length() == 0 {
+    return error_result(EmptyAlphabet)
+  }
+  if alphabet.length() > 256 {
+    return error_result(OversizedAlphabet(alphabet.length()))
+  }
+  if size <= 0 {
+    return error_result(InvalidSize(size))
+  }
+
+  Ok(fn() -> Result[String, NanoidError] { generate(alphabet, size, random) })
+}
+
+///| Convenience custom random function that returns empty string on error
+/// Usage: let gen = custom_random_or_empty(alphabet, size, random_fn); let id = gen()
+pub fn custom_random_or_empty(
   alphabet : String,
   size : Int,
   random : (Int) -> Array[Int]
 ) -> () -> String {
-  fn() -> String { generate(alphabet, size, random) }
+  let safe_random = fn(size : Int) -> Result[Array[Int], NanoidError] {
+    Ok(random(size))
+  }
+
+  match custom_random(alphabet, size, safe_random) {
+    Ok(gen) => fn() -> String {
+      match gen() {
+        Ok(id) => id
+        Err(_) => ""
+      }
+    }
+    Err(_) => fn() -> String { "" }
+  }
 }
 
 // ========== Character Sets & Alphabet Presets ==========

@@ -41,68 +41,142 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 
 ```moonbit
 // Generate a URL-safe ID with default length (21 characters)
-let id = @nanoid.nanoid()
-println(id) // => "rMf19KHCD5GQw0wzQnEKd"
+let id_result = @nanoid.nanoid()
+match id_result {
+  Ok(id) => println(id) // => "rMf19KHCD5GQw0wzQnEKd"
+  Err(e) => println("Error: \{e.to_string()}")
+}
 
 // Generate an ID with custom length
-let short_id = @nanoid.nanoid(size=10)
-println(short_id) // => "yue8fl8f9X"
+let short_id_result = @nanoid.nanoid(size=10)
+match short_id_result {
+  Ok(short_id) => println(short_id) // => "yue8fl8f9X"
+  Err(e) => println("Error: \{e.to_string()}")
+}
+
+// For convenience, use the backward-compatible functions
+let id = @nanoid.nanoid_or_empty()
+println(id) // => "rMf19KHCD5GQw0wzQnEKd" or "" on error
 ```
 
 ### Custom Alphabets
 
 ```moonbit
 // Create a generator with custom alphabet
-let hex_generator = @nanoid.custom_alphabet(@nanoid.hex, size=8)
-let hex_id = hex_generator()
-println(hex_id) // => "a1b2c3d4"
+let hex_generator_result = @nanoid.custom_alphabet(@nanoid.hex, size=8)
+match hex_generator_result {
+  Ok(hex_generator) => {
+    match hex_generator() {
+      Ok(hex_id) => println(hex_id) // => "a1b2c3d4"
+      Err(e) => println("Generation error: \{e.to_string()}")
+    }
+  }
+  Err(e) => println("Setup error: \{e.to_string()}")
+}
 
-// Use predefined alphabet sets
-let safe_generator = @nanoid.custom_alphabet(@nanoid.nolookalikes, size=12)
+// For convenience, use the backward-compatible functions
+let safe_generator = @nanoid.custom_alphabet_or_empty(@nanoid.nolookalikes, size=12)
 let safe_id = safe_generator()
-println(safe_id) // => "6B9CMnpqrt7w"
+println(safe_id) // => "6B9CMnpqrt7w" or "" on error
 ```
 
 ## API Reference
 
 ### Core Functions
 
-#### `nanoid(size~ : Int = 21) -> String`
+#### `nanoid(size~ : Int = 21) -> Result[String, NanoidError]`
 
 Generates a URL-safe unique ID using the default alphabet.
 
-- `size`: Length of the generated ID (default: 21, non-positive values return empty string with warning)
-- Returns: A random string ID, or empty string if size is invalid
+- `size`: Length of the generated ID (default: 21)
+- Returns: `Ok(String)` with the generated ID, or `Err(NanoidError)` for invalid parameters
 
 ```moonbit
-let id1 = @nanoid.nanoid()          // 21 characters
-let id2 = @nanoid.nanoid(size=10)   // 10 characters
-let id3 = @nanoid.nanoid(size=0)    // "" with warning
+let id1 = @nanoid.nanoid()          // Ok("...") with 21 characters
+let id2 = @nanoid.nanoid(size=10)   // Ok("...") with 10 characters
+let id3 = @nanoid.nanoid(size=0)    // Err(InvalidSize(0))
 ```
 
-#### `custom_alphabet(alphabet : String, size~ : Int = 21) -> (() -> String)`
+#### `nanoid_or_empty(size~ : Int = 21) -> String`
+
+Convenience function that returns empty string on error (for backward compatibility).
+
+- `size`: Length of the generated ID (default: 21)
+- Returns: A random string ID, or empty string if invalid
+
+```moonbit
+let id1 = @nanoid.nanoid_or_empty()          // 21 characters or ""
+let id2 = @nanoid.nanoid_or_empty(size=10)   // 10 characters or ""
+let id3 = @nanoid.nanoid_or_empty(size=0)    // ""
+```
+
+#### `custom_alphabet(alphabet : String, size~ : Int = 21) -> Result[() -> Result[String, NanoidError], NanoidError]`
 
 Creates a generator function with a custom alphabet.
 
-- `alphabet`: String containing characters to use (empty string or >256 chars returns empty string with warning)
-- `size`: Default length for generated IDs (non-positive values return empty string with warning)
-- Returns: A generator function
+- `alphabet`: String containing characters to use (1-256 characters)
+- `size`: Default length for generated IDs (must be positive)
+- Returns: `Ok(generator)` or `Err(NanoidError)` for invalid parameters
 
 ```moonbit
-let generator = @nanoid.custom_alphabet("0123456789", size=8)
-let numeric_id = generator()  // => "12345678"
-let bad_gen = @nanoid.custom_alphabet("", size=8)
-let empty_id = bad_gen()      // "" with warning
+let generator_result = @nanoid.custom_alphabet("0123456789", size=8)
+match generator_result {
+  Ok(generator) => {
+    match generator() {
+      Ok(numeric_id) => println(numeric_id)  // => "12345678"
+      Err(e) => println("Generation error: \{e.to_string()}")
+    }
+  }
+  Err(e) => println("Setup error: \{e.to_string()}")
+}
+
+let bad_result = @nanoid.custom_alphabet("", size=8)
+// Returns Err(EmptyAlphabet)
 ```
 
-#### `custom_random(alphabet : String, size : Int, random : (Int) -> Array[Int]) -> (() -> String)`
+#### `custom_alphabet_or_empty(alphabet : String, size~ : Int = 21) -> (() -> String)`
+
+Convenience function that returns empty string on error (for backward compatibility).
+
+- `alphabet`: String containing characters to use
+- `size`: Default length for generated IDs
+- Returns: A generator function that returns string or empty string on error
+
+#### `custom_random(alphabet : String, size : Int, random : (Int) -> Result[Array[Int], NanoidError]) -> Result[() -> Result[String, NanoidError], NanoidError]`
 
 Creates a generator with custom alphabet and random function.
 
-- `alphabet`: String containing characters to use (empty string or >256 chars returns empty string with warning)
-- `size`: Length for generated IDs (non-positive values return empty string with warning)
-- `random`: Custom random byte generator function
-- Returns: A generator function
+- `alphabet`: String containing characters to use (1-256 characters)
+- `size`: Length for generated IDs (must be positive)
+- `random`: Custom random byte generator function that returns Result
+- Returns: `Ok(generator)` or `Err(NanoidError)` for invalid parameters
+
+## Error Handling
+
+The library uses MoonBit's Result type for proper error handling:
+
+```moonbit
+pub enum NanoidError {
+  EmptyAlphabet                    // Alphabet cannot be empty
+  OversizedAlphabet(Int)          // Alphabet exceeds 256 characters
+  InvalidSize(Int)                // Size must be greater than 0
+  RandomGenerationError(String)   // Random number generation failed
+}
+```
+
+### Error Handling Examples
+
+```moonbit
+// Handle errors explicitly
+match @nanoid.nanoid(size=-1) {
+  Ok(id) => println("Generated: \{id}")
+  Err(InvalidSize(size)) => println("Invalid size: \{size}")
+  Err(e) => println("Other error: \{e.to_string()}")
+}
+
+// Use convenience functions for backward compatibility
+let id = @nanoid.nanoid_or_empty(size=-1)  // Returns "" on error
+```
 
 ## Predefined Alphabets
 

@@ -227,3 +227,21 @@ test "error_message_quality" {
     Ok(_) => assert_true(false) // Should not succeed
   }
 }
+///|
+test "custom_random_validation" {
+  // Test valid custom random function
+  let valid_random = fn(size : Int) -> Result[Array[Int], NanoidError] {
+    Ok(Array::make(size, 42))
+  }
+  let result = custom_random("ABC", 5, valid_random)
+  assert_true(result.is_ok())
+
+  // Test invalid custom random function (wrong array length)
+  let invalid_random = fn(_size : Int) -> Result[Array[Int], NanoidError] {
+    Ok(Array::make(2, 42)) // Always returns 2 elements regardless of requested size
+  }
+  let result_invalid = custom_random("ABC", 5, invalid_random)
+  assert_true(result_invalid.is_err())
+
+
+}

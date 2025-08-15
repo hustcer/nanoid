@@ -10,7 +10,7 @@ pub enum NanoidError {
   OversizedAlphabet(Int) // Contains the actual length
   InvalidSize(Int) // Contains the invalid size value
   RandomGenerationError(String)
-} derive(Eq)
+}
 
 ///| Convert NanoidError to string representation
 pub fn NanoidError::to_string(self : NanoidError) -> String {
@@ -118,10 +118,42 @@ fn validate_size(size : Int) -> ValidationResult {
   Valid
 }
 
+///| Validate random function parameter
+fn validate_random_function(
+  random : (Int) -> Result[Array[Int], NanoidError],
+) -> ValidationResult {
+  // Test the random function with a small sample to catch issues early
+  match random(1) {
+    Ok(test_bytes) =>
+      if test_bytes.length() != 1 {
+        return InvalidRandom(
+          RandomGenerationError(
+            "Custom random function returned incorrect array length",
+          ),
+        )
+      } else {
+        Valid
+      }
+    Err(e) => InvalidRandom(e)
+  }
+}
+
 ///| Validate both alphabet and size parameters
 fn validate_parameters(alphabet : String, size : Int) -> ValidationResult {
   match validate_alphabet(alphabet) {
     Valid => validate_size(size)
+    error => error
+  }
+}
+
+///| Validate alphabet, size, and random function parameters
+fn validate_all_parameters(
+  alphabet : String,
+  size : Int,
+  random : (Int) -> Result[Array[Int], NanoidError],
+) -> ValidationResult {
+  match validate_parameters(alphabet, size) {
+    Valid => validate_random_function(random)
     error => error
   }
 }
@@ -473,43 +505,16 @@ pub fn custom_random(
   size : Int,
   random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[() -> Result[String, NanoidError], NanoidError] {
-  // Validate parameters early with comprehensive checks
-  if alphabet.length() == 0 {
-    return error_result(EmptyAlphabet)
+  // Use unified validation for all parameters
+  match validate_all_parameters(alphabet, size, random) {
+    Valid =>
+      Ok(fn() -> Result[String, NanoidError] {
+        generate(alphabet, size, random)
+      })
+    InvalidAlphabet(error) => Err(error)
+    InvalidSize(error) => Err(error)
+    InvalidRandom(error) => Err(error)
   }
-  if alphabet.length() > 256 {
-    return error_result(OversizedAlphabet(alphabet.length()))
-  }
-  if size <= 0 || size > 1000000 {
-    return error_result(InvalidSize(size))
-  }
-
-  // Validate alphabet characters
-  for i = 0; i < alphabet.length(); i = i + 1 {
-    match alphabet.get_char(i) {
-      Some(_) => continue
-      None =>
-        return error_result(
-          RandomGenerationError(
-            "Invalid character in alphabet at position \{i}",
-          ),
-        )
-    }
-  }
-
-  // Test the random function with a small sample to catch issues early
-  match random(1) {
-    Ok(test_bytes) =>
-      if test_bytes.length() != 1 {
-        return error_result(
-          RandomGenerationError(
-            "Custom random function returned incorrect array length",
-          ),
-        )
-      }
-    Err(e) => return Err(e)
-  }
-  Ok(fn() -> Result[String, NanoidError] { generate(alphabet, size, random) })
 }
 
 ///| Convenience custom random function that returns empty string on error

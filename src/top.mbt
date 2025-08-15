@@ -87,6 +87,12 @@ fn main {
       println("Oversized alphabet (300 chars) → Error: \{e.to_string()}")
   }
 
+  // Test duplicate characters in alphabet
+  match @nanoid.custom_alphabet("ABCA", size=5) {
+    Ok(_) => println("Unexpected success with duplicate characters")
+    Err(e) => println("Duplicate characters → Error: \{e.to_string()}")
+  }
+
   // Multiple issues: empty alphabet + negative size
   match @nanoid.custom_alphabet("", size=-5) {
     Ok(_) => println("Unexpected success with multiple issues")

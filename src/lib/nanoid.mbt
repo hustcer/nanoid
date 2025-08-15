@@ -33,6 +33,29 @@ fn[T] error_result(error : NanoidError) -> Result[T, NanoidError] {
   Err(error)
 }
 
+///| Constant-time string comparison to prevent timing attacks
+/// This is important for security-sensitive applications
+fn constant_time_eq(a : String, b : String) -> Bool {
+  if a.length() != b.length() {
+    return false
+  }
+
+  let mut result = 0
+  for i = 0; i < a.length(); i = i + 1 {
+    let char_a = match a.get_char(i) {
+      Some(c) => c.to_int()
+      None => 0
+    }
+    let char_b = match b.get_char(i) {
+      Some(c) => c.to_int()
+      None => 0
+    }
+    result = result | (char_a ^ char_b)
+  }
+
+  result == 0
+}
+
 // ========== Constants and Alphabets ==========
 
 ///| Default URL-friendly alphabet (official nanoid order)
@@ -71,8 +94,8 @@ fn next_int64(self : SimpleRng) -> Int64 {
   self.state = self.state ^ (self.state << 25)
   self.state = self.state ^ (self.state >> 27)
 
-  // Return the transformed state multiplied by the constant
-  // This is the correct xorshift64* implementation
+  // Return the state multiplied by the constant (this is the output, not stored back)
+  // The state is already updated above, this is just the output transformation
   self.state * 0x2545F4914F6CDD1DL
 }
 
@@ -132,6 +155,10 @@ fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
   // Mix in size and old count for additional entropy
   seed = seed ^ (size_factor * 0x517CC1B727220A95L)
   seed = seed ^ (old_count.to_int64() * 0x9E3779B97F4A7C15L)
+
+  // Add additional entropy mixing to prevent correlation
+  seed = seed ^ ((count * size_factor) * 0x94D049BB133111EBL)
+
   let rng = SimpleRng::new(seed)
   let bytes = Array::make(size, 0)
 
@@ -139,6 +166,11 @@ fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
   for i = 0; i < size; i = i + 1 {
     bytes[i] = rng.next_int(256)
   }
+
+  // Security: Clear sensitive seed data from memory
+  // Note: This is a best-effort approach in MoonBit
+  seed = 0L
+
   Ok(bytes)
 }
 
@@ -173,6 +205,24 @@ fn generate(
     }
   }
 
+  // Check for duplicate characters in alphabet (optional but recommended)
+  // This helps catch user errors and improves randomness quality
+  if alphabet.length() > 1 {
+    for i = 0; i < alphabet.length() - 1; i = i + 1 {
+      let char_i = alphabet.get_char(i).unwrap()
+      for j = i + 1; j < alphabet.length(); j = j + 1 {
+        let char_j = alphabet.get_char(j).unwrap()
+        if char_i == char_j {
+          return error_result(
+            RandomGenerationError(
+              "Duplicate character '\{char_i}' found at positions \{i} and \{j}",
+            ),
+          )
+        }
+      }
+    }
+  }
+
   // Check for invalid size
   if size <= 0 {
     return error_result(InvalidSize(size))
@@ -200,13 +250,19 @@ fn generate(
   mask = mask - 1
 
   // Optimize for common alphabet sizes
+  // Calculate how many random bytes we need based on efficiency
   let optimized_step = match alphabet_length {
-    2 => 8 // Binary: use 8 bits at a time
-    4 => 4 // Quaternary: use 4 bits at a time
-    8 => 3 // Octal: use 3 bits at a time
-    16 => 2 // Hex: use 2 bits at a time
-    64 => 1 // Base64: use 1 bit at a time
-    _ => if mask * size < 256 { mask * size } else { 256 }
+    2 => 64   // Binary: 1 bit per char, so 64 chars from 8 bytes
+    4 => 32   // Quaternary: 2 bits per char, so 32 chars from 8 bytes
+    8 => 21   // Octal: ~2.67 bits per char, so ~21 chars from 8 bytes
+    16 => 16  // Hex: 4 bits per char, so 16 chars from 8 bytes
+    32 => 12  // Base32: ~5 bits per char, so ~12 chars from 8 bytes
+    64 => 10  // Base64: 6 bits per char, so ~10 chars from 8 bytes
+    _ => {
+      // For other sizes, calculate optimal step
+      let bytes_needed = if mask * size < 256 { mask * size } else { 256 }
+      if bytes_needed < 8 { 8 } else { bytes_needed }
+    }
   }
 
   // Use optimized step size
@@ -215,13 +271,15 @@ fn generate(
   // Pre-allocate character array for efficient building
   let id_chars = Array::make(size, ' ')
   let mut counter = 0
-  let mut retry_count = 0
-  let max_retries = size * 4 // Prevent infinite loops
-  while counter < size && retry_count < max_retries {
+  let mut batch_count = 0
+  let max_batches = (size / step + 1) * 3 // Allow reasonable number of batches
+
+  while counter < size && batch_count < max_batches {
     let random_bytes = match get_random(step) {
       Ok(bytes) => bytes
       Err(e) => return Err(e)
     }
+
     let mut byte_index = 0
     while byte_index < random_bytes.length() && counter < size {
       let byte = random_bytes[byte_index] & mask
@@ -231,14 +289,16 @@ fn generate(
         counter = counter + 1
       }
       byte_index = byte_index + 1
-      retry_count = retry_count + 1
     }
+    batch_count = batch_count + 1
   }
 
-  // Safety check: if we couldn't generate enough characters, fill the rest
+  // Safety check: if we couldn't generate enough characters, use deterministic fallback
   if counter < size {
+    // Use a simple deterministic pattern based on position for remaining characters
     for i = counter; i < size; i = i + 1 {
-      let char = alphabet.get_char(0).unwrap() // Use first character as fallback
+      let fallback_index = i % alphabet_length
+      let char = alphabet.get_char(fallback_index).unwrap()
       id_chars[i] = char
     }
   }

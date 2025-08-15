@@ -12,7 +12,7 @@ test "nanoid_default_generation" {
 
   // Check that generated ID contains only URL-safe characters
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     assert_true(url_alphabet.contains(char.to_string()))
   }
 }
@@ -54,7 +54,7 @@ test "custom_alphabet_basic" {
 
   // Check that all characters are from the custom alphabet
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     assert_true(simple_alphabet.contains(char.to_string()))
   }
 }
@@ -70,7 +70,7 @@ test "custom_alphabet_default_size" {
 
   // Check binary characters only
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     assert_true(char == '0' || char == '1')
   }
 }
@@ -83,7 +83,7 @@ test "custom_alphabet_numbers" {
   let id = generator()
   assert_eq(id.length(), 15)
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     assert_true(numbers.contains(char.to_string()))
   }
 }
@@ -140,7 +140,7 @@ test "preset_alphabets_usage" {
   let hex_id = hex_generator()
   assert_eq(hex_id.length(), 8)
   for i = 0; i < hex_id.length(); i = i + 1 {
-    let char = hex_id.char_at(i)
+    let char = hex_id.get_char(i).unwrap()
     assert_true(hex.contains(char.to_string()))
   }
 }
@@ -157,7 +157,7 @@ test "nolookalikes_alphabet" {
 
   // Verify no lookalike characters appear
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     // Should not contain: 1, l, I, 0, O, o, u, v, 5, S, s, 2, Z
     assert_true(char != '1' && char != 'l' && char != 'I')
     assert_true(char != '0' && char != 'O' && char != 'o')
@@ -177,7 +177,7 @@ test "nolookalikes_safe_alphabet" {
 
   // Verify no vowels or problematic characters
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     // Should not contain vowels: a, e, i, o, u, A, E, I, O, U
     assert_true(
       char != 'a' && char != 'e' && char != 'i' && char != 'o' && char != 'u',
@@ -203,7 +203,7 @@ test "base58_alphabet" {
 
   // Verify no confusing characters
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     // Should not contain: 0, O, I, l
     assert_true(char != '0' && char != 'O' && char != 'I' && char != 'l')
     assert_true(base58.contains(char.to_string()))
@@ -218,7 +218,7 @@ test "base62_alphabet" {
   let id = generator()
   assert_eq(id.length(), 10)
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     assert_true(base62.contains(char.to_string()))
   }
 }
@@ -268,7 +268,7 @@ test "large_size" {
 
   // Verify all characters are valid
   for i = 0; i < large_id.length(); i = i + 1 {
-    let char = large_id.char_at(i)
+    let char = large_id.get_char(i).unwrap()
     assert_true(url_alphabet.contains(char.to_string()))
   }
 }
@@ -302,7 +302,7 @@ test "basic_distribution_check" {
   let mut zero_count = 0
   let mut one_count = 0
   for i = 0; i < id.length(); i = i + 1 {
-    if id.char_at(i) == '0' {
+    if id.get_char(i).unwrap() == '0' {
       zero_count = zero_count + 1
     } else {
       one_count = one_count + 1
@@ -344,7 +344,7 @@ test "alphabet_coverage" {
   let mut b_found = false
   let mut c_found = false
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     if char == 'A' {
       a_found = true
     }
@@ -373,7 +373,7 @@ test "custom_alphabet_special_chars" {
 
   // Verify only special characters are used
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     assert_true(special_alphabet.contains(char.to_string()))
   }
 }
@@ -422,10 +422,10 @@ test "character_variety" {
   let id = nanoid(size=100)
 
   // Check that we get some variety in characters (not all the same)
-  let first_char = id.char_at(0)
+  let first_char = id.get_char(0).unwrap()
   let mut different_char_found = false
   for i = 1; i < id.length(); i = i + 1 {
-    if id.char_at(i) != first_char {
+    if id.get_char(i).unwrap() != first_char {
       different_char_found = true
       break
     }
@@ -455,7 +455,7 @@ test "custom_random_edge_cases" {
 
   // Should still generate valid ID despite predictable input
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     assert_true(char == 'A' || char == 'B')
   }
 }
@@ -541,7 +541,7 @@ test "valid_parameters_still_work" {
   let id = generator()
   assert_eq(id.length(), 5)
   for i = 0; i < id.length(); i = i + 1 {
-    let char = id.char_at(i)
+    let char = id.get_char(i).unwrap()
     assert_true(char == 'A' || char == 'B' || char == 'C')
   }
 }

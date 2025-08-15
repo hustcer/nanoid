@@ -66,7 +66,7 @@ fn generate(
 
   // Special case: single character alphabet - no randomness needed
   if alphabet_length == 1 {
-    let single_char = effective_alphabet.char_at(0).to_string()
+    let single_char = effective_alphabet.get_char(0).unwrap().to_string()
     let mut id = ""
     for i = 0; i < effective_size; i = i + 1 {
       id = id + single_char
@@ -95,7 +95,7 @@ fn generate(
     while byte_index < random_bytes.length() && counter < effective_size {
       let byte = random_bytes[byte_index] & mask
       if byte < alphabet_length {
-        let char = effective_alphabet.char_at(byte)
+        let char = effective_alphabet.get_char(byte).unwrap()
         id = id + char.to_string()
         counter = counter + 1
       }

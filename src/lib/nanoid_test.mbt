@@ -110,3 +110,120 @@ test "single_character_alphabet" {
   let id = id_result.unwrap()
   assert_eq(id, "XXXXX")
 }
+
+///|
+test "random_generator_quality" {
+  // Test random number generator quality and reproducibility
+  let rng1 = SimpleRng::new(12345L)
+  let rng2 = SimpleRng::new(12345L)
+
+  // Same seed should produce same sequence
+  let val1_1 = rng1.next_int64()
+  let val1_2 = rng1.next_int64()
+  let val2_1 = rng2.next_int64()
+  let val2_2 = rng2.next_int64()
+
+  assert_eq(val1_1, val2_1)
+  assert_eq(val1_2, val2_2)
+
+  // Values should be different
+  assert_true(val1_1 != val1_2)
+}
+
+///|
+test "random_generator_zero_state" {
+  // Test zero state handling
+  let rng = SimpleRng::new(0L)
+  let val1 = rng.next_int64()
+  let val2 = rng.next_int64()
+
+  // Should not get stuck in zero state
+  assert_true(val1 != 0L)
+  assert_true(val2 != 0L)
+  assert_true(val1 != val2)
+}
+
+///|
+test "random_distribution_basic" {
+  // Basic distribution test for next_int
+  let rng = SimpleRng::new(54321L)
+  let counts = Array::make(4, 0)
+
+  // Generate many samples
+  for i = 0; i < 1000; i = i + 1 {
+    let val = rng.next_int(4)
+    assert_true(val >= 0 && val < 4)
+    counts[val] = counts[val] + 1
+  }
+
+  // Each bucket should have some values (basic sanity check)
+  for i = 0; i < 4; i = i + 1 {
+    assert_true(counts[i] > 0)
+  }
+}
+///|
+test "constant_time_comparison" {
+  // Test constant-time string comparison
+  assert_true(constant_time_eq("hello", "hello"))
+  assert_true(constant_time_eq("", ""))
+  assert_false(constant_time_eq("hello", "world"))
+  assert_false(constant_time_eq("hello", "hello2"))
+  assert_false(constant_time_eq("short", "longer"))
+
+  // Test with nanoid generated strings
+  let id1 = nanoid().unwrap()
+  let id2 = nanoid().unwrap()
+  assert_true(constant_time_eq(id1, id1))
+  assert_false(constant_time_eq(id1, id2))
+}
+///|
+test "edge_cases_and_boundaries" {
+  // Test maximum size limit
+  let result_max = nanoid(size=1000000)
+  assert_true(result_max.is_ok())
+
+  // Test size just over limit
+  let result_over = nanoid(size=1000001)
+  assert_true(result_over.is_err())
+
+  // Test single character ID
+  let result_single = nanoid(size=1)
+  assert_true(result_single.is_ok())
+  let single_id = result_single.unwrap()
+  assert_eq(single_id.length(), 1)
+
+  // Test very large alphabet (at limit)
+  let mut large_alphabet = ""
+  for i = 0; i < 256; i = i + 1 {
+    large_alphabet = large_alphabet + Int::unsafe_to_char(33 + i).to_string() // Start from '!' (33) to avoid duplicates
+  }
+  let result_large = custom_alphabet(large_alphabet, size=5)
+  assert_true(result_large.is_ok())
+
+  // Test alphabet just over limit
+  let oversized_alphabet = large_alphabet + "X"
+  let result_oversized = custom_alphabet(oversized_alphabet, size=5)
+  assert_true(result_oversized.is_err())
+}
+
+///|
+test "error_message_quality" {
+  // Test detailed error messages
+  let empty_result = custom_alphabet("", size=5)
+  match empty_result {
+    Err(error) => {
+      let detailed = error.to_string_detailed()
+      assert_true(detailed.contains("at least one character"))
+    }
+    Ok(_) => assert_true(false) // Should not succeed
+  }
+
+  let negative_result = nanoid(size=-5)
+  match negative_result {
+    Err(error) => {
+      let detailed = error.to_string_detailed()
+      assert_true(detailed.contains("cannot be negative"))
+    }
+    Ok(_) => assert_true(false) // Should not succeed
+  }
+}

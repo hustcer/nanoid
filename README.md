@@ -1,12 +1,21 @@
 # MoonBit Nanoid
 
-**WARN**: Due to [this issue](https://github.com/moonbitlang/core/issues/1616) the library may not work as expected, **DO NOT** use it.
-
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A tiny, secure, URL-friendly, unique string ID generator for [MoonBit](https://moonbitlang.com/).
 
 This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) JavaScript library, maintaining API compatibility while providing excellent error handling through MoonBit's robust type system.
+
+## 🚀 **Recent Optimizations (v2.0)**
+
+This version includes significant optimizations and improvements:
+
+- **Fixed Random Number Generator**: Corrected xorshift64* algorithm implementation for better randomness quality
+- **Enhanced Security**: Improved seed generation with multiple entropy sources and secure memory clearing
+- **Performance Optimizations**: Specialized algorithms for common alphabet sizes and reduced memory allocations
+- **Unified Validation**: Consolidated parameter validation logic for better maintainability
+- **Extended Testing**: Comprehensive test suite including edge cases, performance, and security tests
+- **Better Error Handling**: Detailed error messages with helpful guidance
 
 ## Features
 

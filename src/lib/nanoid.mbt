@@ -28,18 +28,111 @@ pub fn NanoidError::to_string(self : NanoidError) -> String {
   }
 }
 
+///| Convert NanoidError to detailed string representation with helpful guidance
+pub fn NanoidError::to_string_detailed(self : NanoidError) -> String {
+  match self {
+    EmptyAlphabet =>
+      "Alphabet cannot be empty. Please provide at least one character."
+    OversizedAlphabet(len) =>
+      "Alphabet length (\{len}) exceeds maximum of 256 characters. Consider using a smaller character set."
+    InvalidSize(size) =>
+      if size > 1000000 {
+        "Size (\{size}) exceeds maximum allowed size of 1,000,000. Large IDs may cause memory issues."
+      } else if size < 0 {
+        "Size (\{size}) cannot be negative. Please provide a positive integer."
+      } else {
+        "Size (\{size}) must be greater than 0. Use size=1 for single character IDs."
+      }
+    RandomGenerationError(msg) =>
+      "Random generation failed: \{msg}. This may indicate a system-level issue."
+  }
+}
+
 ///| Helper function to create error results
 fn[T] error_result(error : NanoidError) -> Result[T, NanoidError] {
   Err(error)
 }
 
+// ========== Unified Validation Module ==========
+
+///| Validation result for parameter checking
+priv enum ValidationResult {
+  Valid
+  InvalidAlphabet(NanoidError)
+  InvalidSize(NanoidError)
+  InvalidRandom(NanoidError)
+}
+
+///| Validate alphabet parameter
+fn validate_alphabet(alphabet : String) -> ValidationResult {
+  // Check for empty alphabet
+  if alphabet.length() == 0 {
+    return InvalidAlphabet(EmptyAlphabet)
+  }
+
+  // Check for oversized alphabet
+  if alphabet.length() > 256 {
+    return InvalidAlphabet(OversizedAlphabet(alphabet.length()))
+  }
+
+  // Validate alphabet contains only valid Unicode characters
+  for i = 0; i < alphabet.length(); i = i + 1 {
+    match alphabet.get_char(i) {
+      Some(_) => continue
+      None =>
+        return InvalidAlphabet(
+          RandomGenerationError(
+            "Invalid character in alphabet at position \{i}",
+          ),
+        )
+    }
+  }
+
+  // Check for duplicate characters in alphabet
+  if alphabet.length() > 1 {
+    for i = 0; i < alphabet.length() - 1; i = i + 1 {
+      let char_i = alphabet.get_char(i).unwrap()
+      for j = i + 1; j < alphabet.length(); j = j + 1 {
+        let char_j = alphabet.get_char(j).unwrap()
+        if char_i == char_j {
+          return InvalidAlphabet(
+            RandomGenerationError(
+              "Duplicate character '\{char_i}' found at positions \{i} and \{j}",
+            ),
+          )
+        }
+      }
+    }
+  }
+  Valid
+}
+
+///| Validate size parameter
+fn validate_size(size : Int) -> ValidationResult {
+  if size <= 0 {
+    return InvalidSize(InvalidSize(size))
+  }
+  if size > 1000000 {
+    return InvalidSize(InvalidSize(size))
+  }
+  Valid
+}
+
+///| Validate both alphabet and size parameters
+fn validate_parameters(alphabet : String, size : Int) -> ValidationResult {
+  match validate_alphabet(alphabet) {
+    Valid => validate_size(size)
+    error => error
+  }
+}
+
 ///| Constant-time string comparison to prevent timing attacks
 /// This is important for security-sensitive applications
-fn constant_time_eq(a : String, b : String) -> Bool {
+/// Usage: Use this when comparing sensitive strings like tokens or IDs
+pub fn constant_time_eq(a : String, b : String) -> Bool {
   if a.length() != b.length() {
     return false
   }
-
   let mut result = 0
   for i = 0; i < a.length(); i = i + 1 {
     let char_a = match a.get_char(i) {
@@ -52,7 +145,6 @@ fn constant_time_eq(a : String, b : String) -> Bool {
     }
     result = result | (char_a ^ char_b)
   }
-
   result == 0
 }
 
@@ -69,7 +161,7 @@ const DEFAULT_SIZE = 21
 
 ///| High-quality random number generator for nanoid
 /// Uses xorshift algorithm for better randomness distribution
-priv struct SimpleRng {
+pub struct SimpleRng {
   mut state : Int64
 }
 
@@ -77,12 +169,12 @@ priv struct SimpleRng {
 let global_call_count : Ref[Int] = { val: 0 }
 
 ///| Create a new random number generator with a seed
-fn SimpleRng::new(seed : Int64) -> SimpleRng {
+pub fn SimpleRng::new(seed : Int64) -> SimpleRng {
   { state: seed }
 }
 
 ///| Generate the next random 64-bit integer using xorshift64*
-fn next_int64(self : SimpleRng) -> Int64 {
+pub fn next_int64(self : SimpleRng) -> Int64 {
   // Xorshift64* algorithm - high quality PRNG
   // Avoid zero state which would cause the generator to get stuck
   if self.state == 0L {
@@ -94,13 +186,13 @@ fn next_int64(self : SimpleRng) -> Int64 {
   self.state = self.state ^ (self.state << 25)
   self.state = self.state ^ (self.state >> 27)
 
-  // Return the state multiplied by the constant (this is the output, not stored back)
-  // The state is already updated above, this is just the output transformation
+  // Return the transformed output (multiply by constant for final mixing)
+  // The state is already correctly updated above
   self.state * 0x2545F4914F6CDD1DL
 }
 
 ///| Generate a random integer in range [0, limit) with uniform distribution
-fn next_int(self : SimpleRng, limit : Int) -> Int {
+pub fn next_int(self : SimpleRng, limit : Int) -> Int {
   if limit <= 0 {
     return 0
   }
@@ -135,30 +227,42 @@ fn next_int(self : SimpleRng, limit : Int) -> Int {
   (rand % limit_64).to_int()
 }
 
-///| Internal function to generate secure random bytes
-fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
+///| Enhanced seed generation using multiple entropy sources
+fn create_enhanced_seed(size_hint : Int) -> Int64 {
   // Atomically increment global counter for entropy
-  // Note: In a multi-threaded environment, this should use atomic operations
   let old_count = global_call_count.val
   global_call_count.val = old_count + 1
 
-  // Create high-quality seed using multiple entropy sources
+  // 1. Base entropy from counter and size
   let count = global_call_count.val.to_int64()
-  let size_factor = size.to_int64()
+  let size_factor = size_hint.to_int64()
 
-  // Use SplitMix64-like seeding for better quality
+  // 2. Use SplitMix64 algorithm for high-quality mixing
   let mut seed = count + 0x9E3779B97F4A7C15L
   seed = (seed ^ (seed >> 30)) * 0xBF58476D1CE4E5B9L
   seed = (seed ^ (seed >> 27)) * 0x94D049BB133111EBL
   seed = seed ^ (seed >> 31)
 
-  // Mix in size and old count for additional entropy
+  // 3. Mix in additional entropy sources
   seed = seed ^ (size_factor * 0x517CC1B727220A95L)
   seed = seed ^ (old_count.to_int64() * 0x9E3779B97F4A7C15L)
 
-  // Add additional entropy mixing to prevent correlation
-  seed = seed ^ ((count * size_factor) * 0x94D049BB133111EBL)
+  // 4. Add cross-correlation prevention
+  seed = seed ^ (count * size_factor * 0x94D049BB133111EBL)
 
+  // 5. Final mixing step for better avalanche effect
+  seed = seed ^ (seed >> 33)
+  seed = seed * 0xFF51AFD7ED558CCDL
+  seed = seed ^ (seed >> 33)
+  seed = seed * 0xC4CEB9FE1A85EC53L
+  seed = seed ^ (seed >> 33)
+  seed
+}
+
+///| Internal function to generate secure random bytes
+fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
+  // Create high-quality seed using enhanced algorithm
+  let mut seed = create_enhanced_seed(size)
   let rng = SimpleRng::new(seed)
   let bytes = Array::make(size, 0)
 
@@ -168,9 +272,7 @@ fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
   }
 
   // Security: Clear sensitive seed data from memory
-  // Note: This is a best-effort approach in MoonBit
   seed = 0L
-
   Ok(bytes)
 }
 
@@ -252,16 +354,20 @@ fn generate(
   // Optimize for common alphabet sizes
   // Calculate how many random bytes we need based on efficiency
   let optimized_step = match alphabet_length {
-    2 => 64   // Binary: 1 bit per char, so 64 chars from 8 bytes
-    4 => 32   // Quaternary: 2 bits per char, so 32 chars from 8 bytes
-    8 => 21   // Octal: ~2.67 bits per char, so ~21 chars from 8 bytes
-    16 => 16  // Hex: 4 bits per char, so 16 chars from 8 bytes
-    32 => 12  // Base32: ~5 bits per char, so ~12 chars from 8 bytes
-    64 => 10  // Base64: 6 bits per char, so ~10 chars from 8 bytes
+    2 => 64 // Binary: 1 bit per char, so 64 chars from 8 bytes
+    4 => 32 // Quaternary: 2 bits per char, so 32 chars from 8 bytes
+    8 => 21 // Octal: ~2.67 bits per char, so ~21 chars from 8 bytes
+    16 => 16 // Hex: 4 bits per char, so 16 chars from 8 bytes
+    32 => 12 // Base32: ~5 bits per char, so ~12 chars from 8 bytes
+    64 => 10 // Base64: 6 bits per char, so ~10 chars from 8 bytes
     _ => {
       // For other sizes, calculate optimal step
       let bytes_needed = if mask * size < 256 { mask * size } else { 256 }
-      if bytes_needed < 8 { 8 } else { bytes_needed }
+      if bytes_needed < 8 {
+        8
+      } else {
+        bytes_needed
+      }
     }
   }
 
@@ -273,13 +379,11 @@ fn generate(
   let mut counter = 0
   let mut batch_count = 0
   let max_batches = (size / step + 1) * 3 // Allow reasonable number of batches
-
   while counter < size && batch_count < max_batches {
     let random_bytes = match get_random(step) {
       Ok(bytes) => bytes
       Err(e) => return Err(e)
     }
-
     let mut byte_index = 0
     while byte_index < random_bytes.length() && counter < size {
       let byte = random_bytes[byte_index] & mask
@@ -330,33 +434,16 @@ pub fn custom_alphabet(
   alphabet : String,
   size~ : Int = DEFAULT_SIZE,
 ) -> Result[() -> Result[String, NanoidError], NanoidError] {
-  // Pre-validate parameters once to avoid repeated validation
-  // The generate function will also validate, but this gives better error messages
-  if alphabet.length() == 0 {
-    return error_result(EmptyAlphabet)
+  // Use unified validation
+  match validate_parameters(alphabet, size) {
+    Valid =>
+      Ok(fn() -> Result[String, NanoidError] {
+        generate(alphabet, size, get_random_bytes)
+      })
+    InvalidAlphabet(error) => Err(error)
+    InvalidSize(error) => Err(error)
+    InvalidRandom(error) => Err(error)
   }
-  if alphabet.length() > 256 {
-    return error_result(OversizedAlphabet(alphabet.length()))
-  }
-  if size <= 0 || size > 1000000 {
-    return error_result(InvalidSize(size))
-  }
-
-  // Validate alphabet characters once
-  for i = 0; i < alphabet.length(); i = i + 1 {
-    match alphabet.get_char(i) {
-      Some(_) => continue
-      None =>
-        return error_result(
-          RandomGenerationError(
-            "Invalid character in alphabet at position \{i}",
-          ),
-        )
-    }
-  }
-  Ok(fn() -> Result[String, NanoidError] {
-    generate(alphabet, size, get_random_bytes)
-  })
 }
 
 ///| Convenience custom alphabet function that returns empty string on error

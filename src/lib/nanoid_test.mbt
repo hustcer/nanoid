@@ -161,6 +161,33 @@ test "random_distribution_basic" {
     assert_true(counts[i] > 0)
   }
 }
+
+///|
+test "random_generator_fixes" {
+  // Test that the fixed random generator produces different values
+  let rng = SimpleRng::new(12345L)
+  let values = Array::make(10, 0L)
+
+  // Generate multiple values
+  for i = 0; i < 10; i = i + 1 {
+    values[i] = rng.next_int64()
+  }
+
+  // Check that we get different values (not all the same)
+  let mut all_same = true
+  for i = 1; i < 10; i = i + 1 {
+    if values[i] != values[0] {
+      all_same = false
+    }
+  }
+  assert_false(all_same) // Should not all be the same
+
+  // Test that next_int produces values in correct range
+  for i = 0; i < 100; i = i + 1 {
+    let val = rng.next_int(10)
+    assert_true(val >= 0 && val < 10)
+  }
+}
 ///|
 test "constant_time_comparison" {
   // Test constant-time string comparison
@@ -172,9 +199,34 @@ test "constant_time_comparison" {
 
   // Test with nanoid generated strings
   let id1 = nanoid().unwrap()
-  let id2 = nanoid().unwrap()
   assert_true(constant_time_eq(id1, id1))
-  assert_false(constant_time_eq(id1, id2))
+  // FIXED: Use different fixed strings to avoid random collision
+  assert_false(constant_time_eq("test_id_1", "test_id_2"))
+
+  // Test the new secure_verify_id function
+  assert_true(secure_verify_id("same_id", "same_id"))
+  assert_false(secure_verify_id("id1", "id2"))
+}
+
+///|
+test "id_randomness_quality" {
+  // Generate multiple IDs and verify they are different
+  let ids = Array::make(10, "")
+  for i = 0; i < 10; i = i + 1 {
+    ids[i] = nanoid().unwrap()
+  }
+
+  // Check that all IDs are different
+  for i = 0; i < 10; i = i + 1 {
+    for j = i + 1; j < 10; j = j + 1 {
+      assert_false(ids[i] == ids[j]) // Should be different
+    }
+  }
+
+  // Check that IDs have expected length
+  for i = 0; i < 10; i = i + 1 {
+    assert_eq(ids[i].length(), 21)
+  }
 }
 ///|
 test "edge_cases_and_boundaries" {

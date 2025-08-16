@@ -36,7 +36,7 @@ fn get_batch_size_recommendation(Int, Int, Int) -> Int
 
 fn get_cached_alphabet_chars(String) -> Array[Char]
 
-fn get_precomputed_batch_size(Int) -> Int?
+fn get_precomputed_batch_size(Int, Int, Int) -> Int?
 
 fn get_precomputed_mask(Int) -> Int?
 

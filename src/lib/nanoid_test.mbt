@@ -325,11 +325,20 @@ test "optimization_functions" {
   assert_eq(chars[1], 'B')
   assert_eq(chars[2], 'C')
 
-  // Test precomputed batch sizes
-  assert_eq(get_precomputed_batch_size(2), Some(64))
-  assert_eq(get_precomputed_batch_size(16), Some(16))
-  assert_eq(get_precomputed_batch_size(64), Some(10))
-  assert_eq(get_precomputed_batch_size(100), None)
+  // Test precomputed batch sizes with new signature
+  // Only power-of-2 alphabets with perfect mask match should return Some()
+  assert_eq(get_precomputed_batch_size(2, 21, 1), Some(21)) // mask+1 == alphabet_length
+  assert_eq(get_precomputed_batch_size(4, 21, 3), Some(21)) // mask+1 == alphabet_length
+  assert_eq(get_precomputed_batch_size(16, 21, 15), Some(21)) // mask+1 == alphabet_length
+  assert_eq(get_precomputed_batch_size(64, 21, 63), Some(21)) // mask+1 == alphabet_length
+
+  // Test cases where mask+1 != alphabet_length (should return None)
+  assert_eq(get_precomputed_batch_size(64, 21, 31), None) // mask+1 != alphabet_length
+  assert_eq(get_precomputed_batch_size(100, 21, 127), None) // mask+1 != alphabet_length
+
+  // Test clamping behavior
+  assert_eq(get_precomputed_batch_size(16, 5, 15), Some(8)) // Clamped to MIN_BATCH_SIZE
+  assert_eq(get_precomputed_batch_size(64, 300, 63), Some(256)) // Clamped to MAX_BATCH_SIZE
 }
 
 ///|

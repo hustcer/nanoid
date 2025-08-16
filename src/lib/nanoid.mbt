@@ -489,19 +489,46 @@ fn handle_insufficient_randomness(
   )
 }
 
-///| Get precomputed optimal batch size for common alphabet sizes
-pub fn get_precomputed_batch_size(alphabet_length : Int) -> Int? {
-  match alphabet_length {
-    2 => Some(64) // Binary: 1 bit per char, high efficiency
-    4 => Some(32) // Quaternary: 2 bits per char
-    8 => Some(21) // Octal: ~2.67 bits per char
-    16 => Some(16) // Hex: 4 bits per char
-    32 => Some(12) // Base32: ~5 bits per char
-    64 => Some(10) // Base64: 6 bits per char
-    128 => Some(8) // Base128: ~7 bits per char
-    256 => Some(8) // Base256: 8 bits per char
-    _ => None
+///| Heuristic fast-path for optimal batch size when rejection probability is zero.
+
+///| Returns Some(step) only when (mask + 1) == alphabet_length (i.e. power-of-two alphabet)
+
+///| so every generated random byte can map to a character without rejection.
+
+///| Strategy:
+
+///|   - Use target_size directly (1 batch ideal) to minimize RNG + loop overhead.
+
+///|   - Clamp to [MIN_BATCH_SIZE, MAX_BATCH_SIZE] to avoid pathological tiny/huge requests.
+
+///|   - Otherwise return None and let the analytical path compute a value.
+
+///| Rationale:
+
+///|   Previous implementation hard-coded opaque magic numbers (e.g. 64->10) which caused
+
+///|   unnecessary multiple batches, increasing RNG calls and memory clearing. This version
+
+///|   keeps semantics minimal while enabling single-batch generation for common alphabets
+
+///|   like 64 (URL/base64) and 32 (base32) when size is within limits.
+pub fn get_precomputed_batch_size(
+  alphabet_length : Int,
+  target_size : Int,
+  mask : Int,
+) -> Int? {
+  if mask + 1 == alphabet_length { // perfect power-of-two span => zero rejection
+    // Clamp desired step to reasonable bounds
+    let mut step = target_size
+    if step < MIN_BATCH_SIZE {
+      step = MIN_BATCH_SIZE
+    }
+    if step > MAX_BATCH_SIZE {
+      step = MAX_BATCH_SIZE
+    }
+    return Some(step)
   }
+  None
 }
 
 ///| Calculate optimal batch size for random byte generation
@@ -511,32 +538,30 @@ fn calculate_optimal_batch_size(
   target_size : Int,
   mask : Int,
 ) -> Int {
-  // Try precomputed values first
-  let optimized_step = match get_precomputed_batch_size(alphabet_length) {
+  // Fast path: perfect power-of-two span uses single batch (clamped) to reduce overhead.
+  let optimized_step = match
+    get_precomputed_batch_size(alphabet_length, target_size, mask) {
     Some(precomputed) => precomputed
     None => {
-      // For other sizes, calculate based on entropy efficiency
-      // More precise efficiency calculation
-      let efficiency_factor = alphabet_length.to_double() /
-        (mask + 1).to_double()
-      let waste_factor = 1.0 / efficiency_factor // How much we waste due to rejection
-      let safety_margin = 1.2 // 20% safety margin
-      let estimated_bytes = (target_size.to_double() *
-      waste_factor *
-      safety_margin).to_int()
-
-      // Clamp to reasonable bounds
-      if estimated_bytes < MIN_BATCH_SIZE {
-        MIN_BATCH_SIZE
-      } else if estimated_bytes > MAX_BATCH_SIZE {
-        MAX_BATCH_SIZE
-      } else {
-        estimated_bytes
+      // Analytical estimation: bytes_needed ≈ target_size * waste_factor * safety_margin
+      // waste_factor = 1 / efficiency, efficiency = alphabet_length / (mask+1)
+      let efficiency = alphabet_length.to_double() / (mask + 1).to_double()
+      let waste_factor = 1.0 / efficiency
+      let safety_margin = 1.2 // modest extra to reduce probability of a second batch
+      let raw = (target_size.to_double() * waste_factor * safety_margin).to_int()
+      // Clamp to global bounds
+      let mut est = raw
+      if est < MIN_BATCH_SIZE {
+        est = MIN_BATCH_SIZE
       }
+      if est > MAX_BATCH_SIZE {
+        est = MAX_BATCH_SIZE
+      }
+      est
     }
   }
 
-  // Ensure we don't generate more than needed for small IDs
+  // Avoid generating wildly more bytes than needed for very small target sizes.
   let max_reasonable = target_size * 2
   if optimized_step > max_reasonable {
     max_reasonable

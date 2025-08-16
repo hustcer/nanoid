@@ -6,7 +6,7 @@ A tiny, secure, URL-friendly, unique string ID generator for [MoonBit](https://m
 
 This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) JavaScript library, maintaining API compatibility while providing excellent error handling through MoonBit's robust type system.
 
-## 🚀 **Recent Optimizations (v2.0)**
+## 🚀 **Recent Optimizations (v0.2.0)**
 
 This version includes significant optimizations and improvements:
 
@@ -16,6 +16,7 @@ This version includes significant optimizations and improvements:
 - **Unified Validation**: Consolidated parameter validation logic for better maintainability
 - **Extended Testing**: Comprehensive test suite including edge cases, performance, and security tests
 - **Better Error Handling**: Detailed error messages with helpful guidance
+- **Fail-fast Security**: Removed deterministic fallback to prevent predictable ID generation
 
 ## Features
 
@@ -168,7 +169,8 @@ The library uses MoonBit's Result type for proper error handling:
 pub enum NanoidError {
   EmptyAlphabet                    // Alphabet cannot be empty
   OversizedAlphabet(Int)          // Alphabet exceeds 256 characters
-  InvalidSize(Int)                // Size must be greater than 0
+  SizeTooSmall(Int)               // Size must be greater than 0
+  SizeTooLarge(Int)               // Size exceeds maximum allowed
   RandomGenerationError(String)   // Random number generation failed
 }
 ```
@@ -179,7 +181,7 @@ pub enum NanoidError {
 // Handle errors explicitly
 match @nanoid.nanoid(size=-1) {
   Ok(id) => println("Generated: \{id}")
-  Err(InvalidSize(size)) => println("Invalid size: \{size}")
+  Err(SizeTooSmall(size)) => println("Invalid size: \{size}")
   Err(e) => println("Other error: \{e.to_string()}")
 }
 

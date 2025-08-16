@@ -2,11 +2,25 @@
 package "hustcer/nanoid/lib"
 
 // Values
+fn alphabet_to_chars(String) -> Array[Char]
+
 let alphanumeric : String
+
+fn atomic_increment_counter() -> Int
 
 let base58 : String
 
 let base62 : String
+
+fn calculate_entropy_efficiency(Int, Int) -> Double
+
+fn calculate_mask(Int) -> Int
+
+fn calculate_waste_factor(Int, Int) -> Double
+
+fn constant_time_eq(String, String) -> Bool
+
+fn count_set_bits(Int64) -> Int
 
 fn custom_alphabet(String, size? : Int) -> Result[() -> Result[String, NanoidError], NanoidError]
 
@@ -17,6 +31,16 @@ fn custom_random(String, Int, (Int) -> Result[Array[Int], NanoidError]) -> Resul
 fn custom_random_or_empty(String, Int, (Int) -> Array[Int]) -> () -> String
 
 let filename_safe : String
+
+fn get_batch_size_recommendation(Int, Int, Int) -> Int
+
+fn get_cached_alphabet_chars(String) -> Array[Char]
+
+fn get_precomputed_batch_size(Int) -> Int?
+
+fn get_precomputed_mask(Int) -> Int?
+
+let global_call_count : Ref[Int]
 
 let hex : String
 
@@ -34,6 +58,10 @@ let nolookalikes_safe : String
 
 let numbers : String
 
+fn secure_clear_bytes(Array[Int]) -> Unit
+
+fn secure_verify_id(String, String) -> Bool
+
 let uppercase : String
 
 let url_alphabet : String
@@ -46,11 +74,19 @@ let url_safe : String
 pub enum NanoidError {
   EmptyAlphabet
   OversizedAlphabet(Int)
-  InvalidSize(Int)
+  SizeTooSmall(Int)
+  SizeTooLarge(Int)
   RandomGenerationError(String)
 }
 fn NanoidError::to_string(Self) -> String
-impl Eq for NanoidError
+fn NanoidError::to_string_detailed(Self) -> String
+
+pub struct SimpleRng {
+  mut state : Int64
+}
+fn SimpleRng::new(Int64) -> Self
+fn SimpleRng::next_int(Self, Int) -> Int
+fn SimpleRng::next_int64(Self) -> Int64
 
 // Type aliases
 

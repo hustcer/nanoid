@@ -350,14 +350,14 @@ pub fn alphabet_to_chars(alphabet : String) -> Array[Char] {
 }
 
 ///| Get precomputed mask for common alphabet sizes
-pub fn get_precomputed_mask(alphabet_length : Int) -> Option[Int] {
+pub fn get_precomputed_mask(alphabet_length : Int) -> Int? {
   match alphabet_length {
-    2 => Some(1)     // 2^1 - 1
-    4 => Some(3)     // 2^2 - 1
-    8 => Some(7)     // 2^3 - 1
-    16 => Some(15)   // 2^4 - 1
-    32 => Some(31)   // 2^5 - 1
-    64 => Some(63)   // 2^6 - 1
+    2 => Some(1) // 2^1 - 1
+    4 => Some(3) // 2^2 - 1
+    8 => Some(7) // 2^3 - 1
+    16 => Some(15) // 2^4 - 1
+    32 => Some(31) // 2^5 - 1
+    64 => Some(63) // 2^6 - 1
     128 => Some(127) // 2^7 - 1
     256 => Some(255) // 2^8 - 1
     _ => None
@@ -482,16 +482,16 @@ fn handle_insufficient_randomness(
 }
 
 ///| Get precomputed optimal batch size for common alphabet sizes
-pub fn get_precomputed_batch_size(alphabet_length : Int) -> Option[Int] {
+pub fn get_precomputed_batch_size(alphabet_length : Int) -> Int? {
   match alphabet_length {
-    2 => Some(64)   // Binary: 1 bit per char, high efficiency
-    4 => Some(32)   // Quaternary: 2 bits per char
-    8 => Some(21)   // Octal: ~2.67 bits per char
-    16 => Some(16)  // Hex: 4 bits per char
-    32 => Some(12)  // Base32: ~5 bits per char
-    64 => Some(10)  // Base64: 6 bits per char
-    128 => Some(8)  // Base128: ~7 bits per char
-    256 => Some(8)  // Base256: 8 bits per char
+    2 => Some(64) // Binary: 1 bit per char, high efficiency
+    4 => Some(32) // Quaternary: 2 bits per char
+    8 => Some(21) // Octal: ~2.67 bits per char
+    16 => Some(16) // Hex: 4 bits per char
+    32 => Some(12) // Base32: ~5 bits per char
+    64 => Some(10) // Base64: 6 bits per char
+    128 => Some(8) // Base128: ~7 bits per char
+    256 => Some(8) // Base256: 8 bits per char
     _ => None
   }
 }
@@ -509,10 +509,13 @@ fn calculate_optimal_batch_size(
     None => {
       // For other sizes, calculate based on entropy efficiency
       // More precise efficiency calculation
-      let efficiency_factor = alphabet_length.to_double() / (mask + 1).to_double()
+      let efficiency_factor = alphabet_length.to_double() /
+        (mask + 1).to_double()
       let waste_factor = 1.0 / efficiency_factor // How much we waste due to rejection
       let safety_margin = 1.2 // 20% safety margin
-      let estimated_bytes = (target_size.to_double() * waste_factor * safety_margin).to_int()
+      let estimated_bytes = (target_size.to_double() *
+      waste_factor *
+      safety_margin).to_int()
 
       // Clamp to reasonable bounds
       if estimated_bytes < MIN_BATCH_SIZE {

@@ -122,7 +122,6 @@ test "random_generator_quality" {
   let val1_2 = rng1.next_int64()
   let val2_1 = rng2.next_int64()
   let val2_2 = rng2.next_int64()
-
   assert_eq(val1_1, val2_1)
   assert_eq(val1_2, val2_2)
 
@@ -188,6 +187,7 @@ test "random_generator_fixes" {
     assert_true(val >= 0 && val < 10)
   }
 }
+
 ///|
 test "constant_time_comparison" {
   // Test constant-time string comparison
@@ -251,7 +251,10 @@ test "performance_optimizations" {
   assert_eq(hex_id.length(), 10)
 
   // Test with base64-like alphabet
-  let base64_result = custom_alphabet("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", size=12)
+  let base64_result = custom_alphabet(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
+    size=12,
+  )
   assert_true(base64_result.is_ok())
   let base64_gen = base64_result.unwrap()
   let base64_id = base64_gen().unwrap()
@@ -290,6 +293,7 @@ test "id_randomness_quality" {
     assert_eq(ids[i].length(), 21)
   }
 }
+
 ///|
 test "edge_cases_and_boundaries" {
   // Test maximum size limit
@@ -331,7 +335,6 @@ test "error_message_quality" {
     }
     Ok(_) => assert_true(false) // Should not succeed
   }
-
   let negative_result = nanoid(size=-5)
   match negative_result {
     Err(error) => {
@@ -341,6 +344,7 @@ test "error_message_quality" {
     Ok(_) => assert_true(false) // Should not succeed
   }
 }
+
 ///|
 test "custom_random_validation" {
   // Test valid custom random function
@@ -356,6 +360,4 @@ test "custom_random_validation" {
   }
   let result_invalid = custom_random("ABC", 5, invalid_random)
   assert_true(result_invalid.is_err())
-
-
 }

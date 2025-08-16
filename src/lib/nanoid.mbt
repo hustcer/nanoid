@@ -578,7 +578,7 @@ fn create_enhanced_seed(size_hint : Int) -> Int64 {
   let size_factor = size_hint.to_int64()
 
   // 2. Additional entropy sources for better unpredictability
-  let thread_entropy = (old_count.to_int64() * 0x9E3779B97F4A7C15L) ^ count
+  let thread_entropy = (old_count.to_int64() * SPLITMIX_GOLDEN_RATIO) ^ count
   let size_entropy = size_factor * ENTROPY_MIX1
   let cross_entropy = (count ^ size_factor) * ENTROPY_MIX2
 

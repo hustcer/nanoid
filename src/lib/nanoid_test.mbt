@@ -271,6 +271,41 @@ test "security_enhancements" {
 }
 
 ///|
+test "final_fixes_verification" {
+  // Test alphabet caching works correctly
+  let alphabet = "ABCDEF"
+  let chars1 = get_cached_alphabet_chars(alphabet)
+  let chars2 = get_cached_alphabet_chars(alphabet) // Should use cache
+
+  // Verify they have the same content
+  assert_eq(chars1.length(), chars2.length())
+  for i = 0; i < chars1.length(); i = i + 1 {
+    assert_eq(chars1[i], chars2[i])
+  }
+
+  // Test that different alphabets work correctly
+  let alphabet2 = "123456"
+  let chars3 = get_cached_alphabet_chars(alphabet2)
+  assert_eq(chars3.length(), 6)
+  assert_eq(chars3[0], '1')
+  assert_eq(chars3[5], '6')
+
+  // Test enhanced memory clearing (if available)
+  let test_bytes = Array::make(5, 42)
+  secure_clear_bytes(test_bytes)
+  for i = 0; i < test_bytes.length(); i = i + 1 {
+    assert_eq(test_bytes[i], 0)
+  }
+
+  // Test that the fixes don't break existing functionality
+  let id1 = nanoid(size=10).unwrap()
+  let id2 = nanoid(size=10).unwrap()
+  assert_eq(id1.length(), 10)
+  assert_eq(id2.length(), 10)
+  assert_false(id1 == id2) // Should be different
+}
+
+///|
 test "optimization_functions" {
   // Test precomputed mask function
   assert_eq(get_precomputed_mask(2), Some(1))

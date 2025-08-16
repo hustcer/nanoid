@@ -197,7 +197,8 @@ pub fn secure_clear_bytes(bytes : Array[Int]) -> Unit {
   }
   // Second pass with different pattern to prevent optimization
   for i = 0; i < bytes.length(); i = i + 1 {
-    bytes[i] = bytes[i] ^ 0
+    bytes[i] = bytes[i] ^ 0xFF
+    bytes[i] = bytes[i] ^ 0xFF  // XOR twice to get back to 0, but prevents optimization
   }
   // Note: In a real implementation, we might want to add memory barriers
   // or use volatile operations to prevent compiler optimizations
@@ -383,7 +384,7 @@ pub fn alphabet_to_chars(alphabet : String) -> Array[Char] {
 }
 
 ///| Get precomputed mask for common alphabet sizes
-pub fn get_precomputed_mask(alphabet_length : Int) -> Int? {
+pub fn get_precomputed_mask(alphabet_length : Int) -> Option[Int] {
   match alphabet_length {
     2 => Some(1) // 2^1 - 1
     4 => Some(3) // 2^2 - 1
@@ -422,7 +423,7 @@ fn generate_id_characters(
   get_random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[String, NanoidError] {
   let alphabet_length = alphabet.length()
-  let alphabet_chars = alphabet_to_chars(alphabet) // Pre-convert for efficiency
+  let alphabet_chars = get_cached_alphabet_chars(alphabet) // Use cached conversion for efficiency
   let id_chars = Array::make(size, ' ')
   let mut counter = 0
   let mut batch_count = 0
@@ -515,7 +516,7 @@ fn handle_insufficient_randomness_optimized(
 }
 
 ///| Get precomputed optimal batch size for common alphabet sizes
-pub fn get_precomputed_batch_size(alphabet_length : Int) -> Int? {
+pub fn get_precomputed_batch_size(alphabet_length : Int) -> Option[Int] {
   match alphabet_length {
     2 => Some(64) // Binary: 1 bit per char, high efficiency
     4 => Some(32) // Quaternary: 2 bits per char
@@ -650,6 +651,32 @@ pub fn get_batch_size_recommendation(
   mask : Int,
 ) -> Int {
   calculate_optimal_batch_size(alphabet_length, target_size, mask)
+}
+
+///| Simple alphabet cache to avoid repeated conversions
+/// Note: This is a basic implementation. In production, consider using a proper LRU cache
+let alphabet_char_cache : Ref[Array[(String, Array[Char])]] = { val: Array::new() }
+
+///| Get cached character array for alphabet, or convert and cache it
+pub fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
+  let cache = alphabet_char_cache.val
+
+  // Check if alphabet is already cached
+  for i = 0; i < cache.length(); i = i + 1 {
+    let (cached_alphabet, cached_chars) = cache[i]
+    if cached_alphabet == alphabet {
+      return cached_chars
+    }
+  }
+
+  // Not cached, convert and cache (with simple size limit)
+  let chars = alphabet_to_chars(alphabet)
+  if cache.length() < 16 {  // Limit cache size to prevent memory bloat
+    cache.push((alphabet, chars))
+    alphabet_char_cache.val = cache
+  }
+
+  chars
 }
 
 ///| Internal function to generate secure random bytes

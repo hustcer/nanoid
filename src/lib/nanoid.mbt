@@ -435,13 +435,10 @@ fn generate_id_characters(
     secure_clear_bytes(random_bytes)
   }
 
-  // Handle insufficient randomness case using optimized version
+  // Handle insufficient randomness case by returning an error
   if counter < size {
-    match
-      handle_insufficient_randomness_optimized(
-        id_chars, counter, size, alphabet_chars, alphabet_length, batch_count, max_batches,
-      ) {
-      Ok(_) => ()
+    match handle_insufficient_randomness(batch_count) {
+      Ok(_) => () // Should not happen, but handles the Result type
       Err(e) => return Err(e)
     }
   }
@@ -475,33 +472,17 @@ fn process_random_batch_optimized(
 // Legacy function removed - now using optimized version directly
 
 ///| Handle the case where insufficient random characters were generated (optimized)
-fn handle_insufficient_randomness_optimized(
-  id_chars : Array[Char],
-  current_counter : Int,
-  target_size : Int,
-  alphabet_chars : Array[Char],
-  alphabet_length : Int,
+fn handle_insufficient_randomness(
   batch_count : Int,
-  max_batches : Int,
 ) -> Result[Unit, NanoidError] {
-  // If we couldn't generate enough characters after reasonable attempts,
-  // this indicates a problem with the random function or alphabet
-  if batch_count >= max_batches {
-    return error_result(
-      RandomGenerationError(
-        "Failed to generate sufficient random characters after \{max_batches} attempts",
-      ),
-    )
-  }
-
-  // Use a simple deterministic pattern based on position for remaining characters
-  // This should rarely happen with a properly functioning random generator
-  // OPTIMIZED: Use character array for direct access instead of string.get_char()
-  for i = current_counter; i < target_size; i = i + 1 {
-    let fallback_index = i % alphabet_length
-    id_chars[i] = alphabet_chars[fallback_index]
-  }
-  Ok(())
+  // This function is called when not enough characters were generated.
+  // Instead of falling back to a deterministic pattern, we will always
+  // return an error to enforce security and correctness ("fail-fast").
+  return error_result(
+    RandomGenerationError(
+      "Failed to generate sufficient random characters after \{batch_count} batches. This may indicate an issue with the random number generator.",
+    ),
+  )
 }
 
 ///| Get precomputed optimal batch size for common alphabet sizes

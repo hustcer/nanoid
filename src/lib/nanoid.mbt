@@ -80,35 +80,24 @@ fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
     return InvalidAlphabet(OversizedAlphabet(alphabet.length()))
   }
 
-  // Validate alphabet contains only valid Unicode characters
+  // Use an immutable HashSet to efficiently check for valid Unicode characters and duplicates in O(n)
+  let mut seen : @immut/hashset.T[Char] = @immut/hashset.new()
   for i = 0; i < alphabet.length(); i = i + 1 {
     match alphabet.get_char(i) {
-      Some(_) => continue
+      Some(char) => {
+        if seen.contains(char) {
+          return InvalidAlphabet(
+            RandomGenerationError("Duplicate character '\{char}' found in alphabet"),
+          )
+        }
+        seen = seen.add(char)
+      }
       None =>
         return InvalidAlphabet(
           RandomGenerationError(
             "Invalid character in alphabet at position \{i}",
           ),
         )
-    }
-  }
-
-  // OPTIMIZED: Check for duplicate characters using character frequency counting
-  // This is O(n) instead of O(n²) - fallback to O(n²) for now due to Map limitations
-  if alphabet.length() > 1 {
-    // Use array-based approach for better performance than nested loops
-    for i = 0; i < alphabet.length() - 1; i = i + 1 {
-      let char_i = alphabet.get_char(i).unwrap()
-      for j = i + 1; j < alphabet.length(); j = j + 1 {
-        let char_j = alphabet.get_char(j).unwrap()
-        if char_i == char_j {
-          return InvalidAlphabet(
-            RandomGenerationError(
-              "Duplicate character '\{char_i}' found at positions \{i} and \{j}",
-            ),
-          )
-        }
-      }
     }
   }
   Valid

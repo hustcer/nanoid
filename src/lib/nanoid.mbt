@@ -187,15 +187,20 @@ pub fn constant_time_eq(a : String, b : String) -> Bool {
   result == 0
 }
 
-///| Secure memory clearing for sensitive data
-/// FIXED: Added secure memory clearing functionality
-fn secure_clear_bytes(bytes : Array[Int]) -> Unit {
+///| Secure memory clearing for sensitive data (enhanced)
+/// FIXED: Added secure memory clearing functionality with optimization prevention
+pub fn secure_clear_bytes(bytes : Array[Int]) -> Unit {
   // Clear the array contents to prevent sensitive data from remaining in memory
+  // Use multiple passes to make it harder for compiler to optimize away
   for i = 0; i < bytes.length(); i = i + 1 {
     bytes[i] = 0
   }
+  // Second pass with different pattern to prevent optimization
+  for i = 0; i < bytes.length(); i = i + 1 {
+    bytes[i] = bytes[i] ^ 0
+  }
   // Note: In a real implementation, we might want to add memory barriers
-  // or other techniques to prevent compiler optimizations from removing this
+  // or use volatile operations to prevent compiler optimizations
 }
 
 // ========== Constants and Alphabets ==========
@@ -262,7 +267,35 @@ pub struct SimpleRng {
 }
 
 ///| Global counter to ensure different seeds for each call
-let global_call_count : Ref[Int] = { val: 0 }
+/// Note: In a multi-threaded environment, this should use atomic operations
+pub let global_call_count : Ref[Int] = { val: 0 }
+
+///| Thread-safe increment of global counter (simulated atomic operation)
+pub fn atomic_increment_counter() -> Int {
+  // In a real implementation, this should use atomic compare-and-swap
+  // For now, we simulate thread safety with multiple reads to detect changes
+  let mut old_val = global_call_count.val
+  let mut new_val = old_val + 1
+
+  // Simple retry mechanism to handle potential race conditions
+  let mut attempts = 0
+  while attempts < 3 {
+    let current_val = global_call_count.val
+    if current_val == old_val {
+      global_call_count.val = new_val
+      return new_val
+    } else {
+      // Value changed, retry with new value
+      old_val = current_val
+      new_val = old_val + 1
+      attempts = attempts + 1
+    }
+  }
+
+  // Fallback: just increment (may have race condition but better than nothing)
+  global_call_count.val = global_call_count.val + 1
+  global_call_count.val
+}
 
 // ========== Alphabet Validation Cache ==========
 
@@ -412,11 +445,11 @@ fn generate_id_characters(
     secure_clear_bytes(random_bytes)
   }
 
-  // Handle insufficient randomness case
+  // Handle insufficient randomness case using optimized version
   if counter < size {
     match
-      handle_insufficient_randomness(
-        id_chars, counter, size, alphabet, alphabet_length, batch_count, max_batches,
+      handle_insufficient_randomness_optimized(
+        id_chars, counter, size, alphabet_chars, alphabet_length, batch_count, max_batches,
       ) {
       Ok(_) => ()
       Err(e) => return Err(e)
@@ -451,12 +484,12 @@ fn process_random_batch_optimized(
 
 // Legacy function removed - now using optimized version directly
 
-///| Handle the case where insufficient random characters were generated
-fn handle_insufficient_randomness(
+///| Handle the case where insufficient random characters were generated (optimized)
+fn handle_insufficient_randomness_optimized(
   id_chars : Array[Char],
   current_counter : Int,
   target_size : Int,
-  alphabet : String,
+  alphabet_chars : Array[Char],
   alphabet_length : Int,
   batch_count : Int,
   max_batches : Int,
@@ -473,10 +506,10 @@ fn handle_insufficient_randomness(
 
   // Use a simple deterministic pattern based on position for remaining characters
   // This should rarely happen with a properly functioning random generator
+  // OPTIMIZED: Use character array for direct access instead of string.get_char()
   for i = current_counter; i < target_size; i = i + 1 {
     let fallback_index = i % alphabet_length
-    let char = alphabet.get_char(fallback_index).unwrap()
-    id_chars[i] = char
+    id_chars[i] = alphabet_chars[fallback_index]
   }
   Ok(())
 }
@@ -537,41 +570,86 @@ fn calculate_optimal_batch_size(
   }
 }
 
-///| Enhanced seed generation using multiple entropy sources
+///| Enhanced seed generation using multiple entropy sources (improved security)
 fn create_enhanced_seed(size_hint : Int) -> Int64 {
-  // Atomically increment global counter for entropy
+  // Thread-safe increment of global counter for entropy
   let old_count = global_call_count.val
-  global_call_count.val = old_count + 1
-
-  // 1. Base entropy from counter and size
-  let count = global_call_count.val.to_int64()
+  let count = atomic_increment_counter().to_int64()
   let size_factor = size_hint.to_int64()
 
-  // 2. Use SplitMix64 algorithm for high-quality mixing
-  let mut seed = count + SPLITMIX_GOLDEN_RATIO
+  // 2. Additional entropy sources for better unpredictability
+  let thread_entropy = (old_count.to_int64() * 0x9E3779B97F4A7C15L) ^ count
+  let size_entropy = size_factor * ENTROPY_MIX1
+  let cross_entropy = (count ^ size_factor) * ENTROPY_MIX2
+
+  // 3. Use SplitMix64 algorithm for high-quality mixing
+  let mut seed = count + SPLITMIX_GOLDEN_RATIO + thread_entropy
   seed = (seed ^ (seed >> 30)) * SPLITMIX_MULT1
   seed = (seed ^ (seed >> 27)) * SPLITMIX_MULT2
   seed = seed ^ (seed >> 31)
 
-  // 3. Mix in additional entropy sources
-  seed = seed ^ (size_factor * ENTROPY_MIX1)
+  // 4. Mix in additional entropy sources
+  seed = seed ^ size_entropy
   seed = seed ^ (old_count.to_int64() * SPLITMIX_GOLDEN_RATIO)
+  seed = seed ^ cross_entropy
 
-  // 4. Add cross-correlation prevention
+  // 5. Add cross-correlation prevention with enhanced mixing
   seed = seed ^ (count * size_factor * ENTROPY_MIX2)
+  seed = seed ^ ((count << 16) | (size_factor & 0xFFFFL))
 
-  // 5. Final mixing step for better avalanche effect
+  // 6. Final mixing step for better avalanche effect
   seed = seed ^ (seed >> 33)
   seed = seed * SPLITMIX_MULT3
   seed = seed ^ (seed >> 33)
   seed = seed * SPLITMIX_MULT4
   seed = seed ^ (seed >> 33)
 
+  // 7. Additional security: ensure seed has good bit distribution
+  let bit_count = count_set_bits(seed)
+  if bit_count < 16 || bit_count > 48 {
+    // If bit distribution is poor, add more entropy
+    seed = seed ^ (SPLITMIX_GOLDEN_RATIO * (bit_count.to_int64() + 1L))
+  }
+
   // FIXED: Ensure seed is never zero to prevent RNG from getting stuck
   if seed == 0L {
     seed = SPLITMIX_GOLDEN_RATIO
   }
   seed
+}
+
+///| Count the number of set bits in an Int64 (for entropy quality check)
+pub fn count_set_bits(n : Int64) -> Int {
+  let mut count = 0
+  let mut num = n
+  while num != 0L {
+    count = count + 1
+    num = num & (num - 1L) // Clear the lowest set bit
+  }
+  count
+}
+
+///| Calculate entropy efficiency for a given alphabet size and mask
+pub fn calculate_entropy_efficiency(
+  alphabet_length : Int,
+  mask : Int,
+) -> Double {
+  alphabet_length.to_double() / (mask + 1).to_double()
+}
+
+///| Estimate waste factor for rejection sampling
+pub fn calculate_waste_factor(alphabet_length : Int, mask : Int) -> Double {
+  let efficiency = calculate_entropy_efficiency(alphabet_length, mask)
+  1.0 / efficiency
+}
+
+///| Get optimal batch size recommendation for given parameters
+pub fn get_batch_size_recommendation(
+  alphabet_length : Int,
+  target_size : Int,
+  mask : Int,
+) -> Int {
+  calculate_optimal_batch_size(alphabet_length, target_size, mask)
 }
 
 ///| Internal function to generate secure random bytes

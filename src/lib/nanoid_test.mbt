@@ -209,6 +209,68 @@ test "constant_time_comparison" {
 }
 
 ///|
+test "final_optimizations" {
+  // Test enhanced entropy efficiency calculations
+  let efficiency_16 = calculate_entropy_efficiency(16, 15)
+  assert_true(efficiency_16 > 0.9) // Should be close to 1.0 for power-of-2
+
+  let efficiency_10 = calculate_entropy_efficiency(10, 15)
+  assert_true(efficiency_10 > 0.6 && efficiency_10 < 0.7) // Should be around 0.625
+
+  // Test waste factor calculation
+  let waste_16 = calculate_waste_factor(16, 15)
+  assert_true(waste_16 < 1.1) // Should be close to 1.0
+
+  let waste_10 = calculate_waste_factor(10, 15)
+  assert_true(waste_10 > 1.4 && waste_10 < 1.7) // Should be around 1.6
+
+  // Test batch size recommendations
+  let batch_16 = get_batch_size_recommendation(16, 20, 15)
+  assert_true(batch_16 > 0 && batch_16 <= 256)
+
+  let batch_64 = get_batch_size_recommendation(64, 20, 63)
+  assert_true(batch_64 > 0 && batch_64 <= 256)
+
+  // Test that different calls produce different IDs (improved randomness)
+  let ids = Array::make(5, "")
+  for i = 0; i < 5; i = i + 1 {
+    ids[i] = nanoid().unwrap()
+  }
+
+  // Verify all IDs are different (improved entropy should make this very likely)
+  for i = 0; i < 5; i = i + 1 {
+    for j = i + 1; j < 5; j = j + 1 {
+      assert_false(ids[i] == ids[j])
+    }
+  }
+}
+
+///|
+test "security_enhancements" {
+  // Test that secure clearing works (we can't directly test if memory is cleared,
+  // but we can test that the function doesn't crash)
+  let test_bytes = Array::make(10, 42)
+  secure_clear_bytes(test_bytes)
+
+  // After clearing, all bytes should be zero
+  for i = 0; i < test_bytes.length(); i = i + 1 {
+    assert_eq(test_bytes[i], 0)
+  }
+
+  // Test thread-safe counter increment
+  let initial_count = global_call_count.val
+  let new_count = atomic_increment_counter()
+  assert_true(new_count > initial_count)
+
+  // Test bit counting function
+  assert_eq(count_set_bits(0L), 0)
+  assert_eq(count_set_bits(1L), 1)
+  assert_eq(count_set_bits(3L), 2) // 0b11
+  assert_eq(count_set_bits(7L), 3) // 0b111
+  assert_eq(count_set_bits(15L), 4) // 0b1111
+}
+
+///|
 test "optimization_functions" {
   // Test precomputed mask function
   assert_eq(get_precomputed_mask(2), Some(1))

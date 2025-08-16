@@ -8,7 +8,8 @@
 pub enum NanoidError {
   EmptyAlphabet
   OversizedAlphabet(Int) // Contains the actual length
-  InvalidSize(Int) // Contains the invalid size value
+  SizeTooSmall(Int) // Contains the invalid size value (<= 0)
+  SizeTooLarge(Int) // Contains the invalid size value (> MAX_ID_SIZE)
   RandomGenerationError(String)
 }
 
@@ -18,12 +19,9 @@ pub fn NanoidError::to_string(self : NanoidError) -> String {
     EmptyAlphabet => "Alphabet cannot be empty"
     OversizedAlphabet(len) =>
       "Alphabet length (\{len}) exceeds maximum of 256 characters"
-    InvalidSize(size) =>
-      if size > 1000000 {
-        "Size (\{size}) exceeds maximum allowed size of 1,000,000"
-      } else {
-        "Size (\{size}) must be greater than 0"
-      }
+    SizeTooSmall(size) => "Size (\{size}) must be greater than 0"
+    SizeTooLarge(size) =>
+      "Size (\{size}) exceeds maximum allowed size of 1,000,000"
     RandomGenerationError(msg) => "Random generation failed: \{msg}"
   }
 }
@@ -35,14 +33,14 @@ pub fn NanoidError::to_string_detailed(self : NanoidError) -> String {
       "Alphabet cannot be empty. Please provide at least one character."
     OversizedAlphabet(len) =>
       "Alphabet length (\{len}) exceeds maximum of 256 characters. Consider using a smaller character set."
-    InvalidSize(size) =>
-      if size > 1000000 {
-        "Size (\{size}) exceeds maximum allowed size of 1,000,000. Large IDs may cause memory issues."
-      } else if size < 0 {
+    SizeTooSmall(size) =>
+      if size < 0 {
         "Size (\{size}) cannot be negative. Please provide a positive integer."
       } else {
         "Size (\{size}) must be greater than 0. Use size=1 for single character IDs."
       }
+    SizeTooLarge(size) =>
+      "Size (\{size}) exceeds maximum allowed size of 1,000,000. Large IDs may cause memory issues."
     RandomGenerationError(msg) =>
       "Random generation failed: \{msg}. This may indicate a system-level issue."
   }
@@ -87,7 +85,9 @@ fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
       Some(char) => {
         if seen.contains(char) {
           return InvalidAlphabet(
-            RandomGenerationError("Duplicate character '\{char}' found in alphabet"),
+            RandomGenerationError(
+              "Duplicate character '\{char}' found in alphabet",
+            ),
           )
         }
         seen = seen.add(char)
@@ -106,10 +106,10 @@ fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
 ///| Validate size parameter
 fn validate_size(size : Int) -> ValidationResult {
   if size <= 0 {
-    return InvalidSize(InvalidSize(size))
+    return InvalidSize(SizeTooSmall(size))
   }
   if size > MAX_ID_SIZE {
-    return InvalidSize(InvalidSize(size))
+    return InvalidSize(SizeTooLarge(size))
   }
   Valid
 }
@@ -187,7 +187,7 @@ pub fn secure_clear_bytes(bytes : Array[Int]) -> Unit {
   // Second pass with different pattern to prevent optimization
   for i = 0; i < bytes.length(); i = i + 1 {
     bytes[i] = bytes[i] ^ 0xFF
-    bytes[i] = bytes[i] ^ 0xFF  // XOR twice to get back to 0, but prevents optimization
+    bytes[i] = bytes[i] ^ 0xFF // XOR twice to get back to 0, but prevents optimization
   }
   // Note: In a real implementation, we might want to add memory barriers
   // or use volatile operations to prevent compiler optimizations
@@ -209,6 +209,9 @@ const MAX_ALPHABET_SIZE = 256
 
 ///| Maximum allowed ID size to prevent memory issues
 const MAX_ID_SIZE = 1000000
+
+///| Safety factor for batch generation attempts to prevent infinite loops
+const BATCH_GENERATION_SAFETY_FACTOR = 3
 
 ///| Maximum attempts for rejection sampling to prevent infinite loops
 const MAX_REJECTION_ATTEMPTS = 100
@@ -373,7 +376,7 @@ pub fn alphabet_to_chars(alphabet : String) -> Array[Char] {
 }
 
 ///| Get precomputed mask for common alphabet sizes
-pub fn get_precomputed_mask(alphabet_length : Int) -> Option[Int] {
+pub fn get_precomputed_mask(alphabet_length : Int) -> Int? {
   match alphabet_length {
     2 => Some(1) // 2^1 - 1
     4 => Some(3) // 2^2 - 1
@@ -416,7 +419,7 @@ fn generate_id_characters(
   let id_chars = Array::make(size, ' ')
   let mut counter = 0
   let mut batch_count = 0
-  let max_batches = (size / step + 1) * 3 // Allow reasonable number of batches
+  let max_batches = (size / step + 1) * BATCH_GENERATION_SAFETY_FACTOR // Allow reasonable number of batches
 
   // Main generation loop with batch processing
   while counter < size && batch_count < max_batches {
@@ -486,7 +489,7 @@ fn handle_insufficient_randomness(
 }
 
 ///| Get precomputed optimal batch size for common alphabet sizes
-pub fn get_precomputed_batch_size(alphabet_length : Int) -> Option[Int] {
+pub fn get_precomputed_batch_size(alphabet_length : Int) -> Int? {
   match alphabet_length {
     2 => Some(64) // Binary: 1 bit per char, high efficiency
     4 => Some(32) // Quaternary: 2 bits per char
@@ -623,10 +626,13 @@ pub fn get_batch_size_recommendation(
   calculate_optimal_batch_size(alphabet_length, target_size, mask)
 }
 
+///| Maximum number of alphabets to store in the cache.
+const MAX_ALPHABET_CACHE_SIZE = 16
+
 ///| Simple alphabet cache to avoid repeated conversions
 /// Note: This is a basic implementation. In production, consider using a proper LRU cache
 let alphabet_char_cache : Ref[@immut/hashmap.T[String, Array[Char]]] = {
-  val: @immut/hashmap.new()
+  val: @immut/hashmap.new(),
 }
 
 ///| Get cached character array for alphabet, or convert and cache it
@@ -635,20 +641,18 @@ pub fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
 
   // Check if alphabet is already cached using the map
   match cache.get(alphabet) {
-    Some(cached_chars) => {
+    Some(cached_chars) =>
       // Cache hit
       return cached_chars
-    }
     None => {
       // Cache miss: convert and then cache
       let chars = alphabet_to_chars(alphabet)
 
       // Only cache if the cache size is within the limit to prevent memory bloat
-      if cache.size() < 16 {
+      if cache.size() < MAX_ALPHABET_CACHE_SIZE {
         let new_cache = cache.add(alphabet, chars)
         alphabet_char_cache.val = new_cache
       }
-
       return chars
     }
   }

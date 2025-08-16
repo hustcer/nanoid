@@ -213,21 +213,18 @@ test "final_optimizations" {
   // Test enhanced entropy efficiency calculations
   let efficiency_16 = calculate_entropy_efficiency(16, 15)
   assert_true(efficiency_16 > 0.9) // Should be close to 1.0 for power-of-2
-
   let efficiency_10 = calculate_entropy_efficiency(10, 15)
   assert_true(efficiency_10 > 0.6 && efficiency_10 < 0.7) // Should be around 0.625
 
   // Test waste factor calculation
   let waste_16 = calculate_waste_factor(16, 15)
   assert_true(waste_16 < 1.1) // Should be close to 1.0
-
   let waste_10 = calculate_waste_factor(10, 15)
   assert_true(waste_10 > 1.4 && waste_10 < 1.7) // Should be around 1.6
 
   // Test batch size recommendations
   let batch_16 = get_batch_size_recommendation(16, 20, 15)
   assert_true(batch_16 > 0 && batch_16 <= 256)
-
   let batch_64 = get_batch_size_recommendation(64, 20, 63)
   assert_true(batch_64 > 0 && batch_64 <= 256)
 

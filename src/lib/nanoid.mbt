@@ -181,7 +181,6 @@ pub fn constant_time_eq(a : String, b : String) -> Bool {
 }
 
 ///| Secure memory clearing for sensitive data (enhanced)
-/// FIXED: Added secure memory clearing functionality with optimization prevention
 pub fn secure_clear_bytes(bytes : Array[Int]) -> Unit {
   // Clear the array contents to prevent sensitive data from remaining in memory
   // Use multiple passes to make it harder for compiler to optimize away
@@ -325,7 +324,6 @@ pub fn next_int64(self : SimpleRng) -> Int64 {
   self.state = self.state ^ (self.state << 25)
   self.state = self.state ^ (self.state >> 27)
 
-  // FIXED: Return the mixed output (state * constant) but don't store the multiplication result
   // The state transformations above are the actual state updates
   self.state * XORSHIFT_MULTIPLIER
 }
@@ -342,7 +340,7 @@ pub fn next_int(self : SimpleRng, limit : Int) -> Int {
   // For small limits, use simple approach to avoid complexity
   if limit <= 256 {
     let rand = self.next_int64()
-    // FIXED: Use absolute value properly to handle negative numbers
+    // Use absolute value properly to handle negative numbers
     let abs_rand = if rand < 0L { -rand } else { rand }
     return (abs_rand % limit.to_int64()).to_int()
   }
@@ -354,7 +352,6 @@ pub fn next_int(self : SimpleRng, limit : Int) -> Int {
   let max_attempts = MAX_REJECTION_ATTEMPTS // Prevent infinite loops
   while attempts < max_attempts {
     let rand = self.next_int64()
-    // FIXED: Use absolute value properly
     let abs_rand = if rand < 0L { -rand } else { rand }
     if abs_rand < max_valid {
       return (abs_rand % limit_64).to_int()
@@ -589,7 +586,7 @@ fn create_enhanced_seed(size_hint : Int) -> Int64 {
     seed = seed ^ (SPLITMIX_GOLDEN_RATIO * (bit_count.to_int64() + 1L))
   }
 
-  // FIXED: Ensure seed is never zero to prevent RNG from getting stuck
+  // Ensure seed is never zero to prevent RNG from getting stuck
   if seed == 0L {
     seed = SPLITMIX_GOLDEN_RATIO
   }
@@ -674,7 +671,7 @@ fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
     bytes[i] = rng.next_int(256)
   }
 
-  // FIXED: Security - Clear sensitive seed data from memory more thoroughly
+  // Security - Clear sensitive seed data from memory more thoroughly
   seed = 0L
 
   // Return bytes first - don't clear them here as they contain the random data we need!
@@ -688,7 +685,6 @@ fn generate(
   size : Int,
   get_random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[String, NanoidError] {
-  // FIXED: Use unified validation instead of duplicating logic
   match validate_parameters(alphabet, size) {
     Valid => () // Continue with generation
     InvalidAlphabet(error) => return Err(error)
@@ -864,7 +860,6 @@ pub let filename_safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012
 // ========== Security Utilities ==========
 
 ///| Secure ID verification using constant-time comparison
-/// FIXED: Added public utility function that uses the constant_time_eq function
 /// This prevents timing attacks when verifying IDs or tokens
 /// Usage: secure_verify_id(user_provided_id, expected_id)
 pub fn secure_verify_id(provided_id : String, expected_id : String) -> Bool {

@@ -247,7 +247,7 @@ const SPLITMIX_MULT4 = 0xC4CEB9FE1A85EC53L
 ///| Additional entropy mixing constants
 const ENTROPY_MIX1 = 0x517CC1B727220A95L
 
-///|
+///| Second entropy mixing constant for cross-correlation prevention
 const ENTROPY_MIX2 = 0x94D049BB133111EBL
 
 ///| Maximum safe value for rejection sampling (2^63 - 1)
@@ -338,16 +338,49 @@ pub fn next_int(self : SimpleRng, limit : Int) -> Int {
   (abs_rand % limit_64).to_int()
 }
 
-///| Calculate mask for uniform distribution (power of 2 - 1)
-fn calculate_mask(alphabet_length : Int) -> Int {
-  let mut mask = 1
-  while mask < alphabet_length {
-    mask = mask << 1
+// Performance utility functions removed - can be added back when needed
+
+///| Convert alphabet string to character array for efficient access
+pub fn alphabet_to_chars(alphabet : String) -> Array[Char] {
+  let chars = Array::make(alphabet.length(), ' ')
+  for i = 0; i < alphabet.length(); i = i + 1 {
+    chars[i] = alphabet.get_char(i).unwrap()
   }
-  mask - 1
+  chars
 }
 
-///| Generate ID characters using batch processing with rejection sampling
+///| Get precomputed mask for common alphabet sizes
+pub fn get_precomputed_mask(alphabet_length : Int) -> Option[Int] {
+  match alphabet_length {
+    2 => Some(1)     // 2^1 - 1
+    4 => Some(3)     // 2^2 - 1
+    8 => Some(7)     // 2^3 - 1
+    16 => Some(15)   // 2^4 - 1
+    32 => Some(31)   // 2^5 - 1
+    64 => Some(63)   // 2^6 - 1
+    128 => Some(127) // 2^7 - 1
+    256 => Some(255) // 2^8 - 1
+    _ => None
+  }
+}
+
+///| Calculate mask for uniform distribution (power of 2 - 1)
+/// Uses precomputed values for common sizes, falls back to calculation for others
+pub fn calculate_mask(alphabet_length : Int) -> Int {
+  match get_precomputed_mask(alphabet_length) {
+    Some(mask) => mask
+    None => {
+      // Fallback to calculation for uncommon sizes
+      let mut mask = 1
+      while mask < alphabet_length {
+        mask = mask << 1
+      }
+      mask - 1
+    }
+  }
+}
+
+///| Generate ID characters using batch processing with rejection sampling (optimized)
 fn generate_id_characters(
   alphabet : String,
   size : Int,
@@ -356,6 +389,7 @@ fn generate_id_characters(
   get_random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[String, NanoidError] {
   let alphabet_length = alphabet.length()
+  let alphabet_chars = alphabet_to_chars(alphabet) // Pre-convert for efficiency
   let id_chars = Array::make(size, ' ')
   let mut counter = 0
   let mut batch_count = 0
@@ -368,9 +402,9 @@ fn generate_id_characters(
       Err(e) => return Err(e)
     }
 
-    // Process each byte in the batch
-    counter = process_random_batch(
-      random_bytes, alphabet, id_chars, counter, size, mask, alphabet_length,
+    // Process each byte in the batch using optimized version
+    counter = process_random_batch_optimized(
+      random_bytes, alphabet_chars, id_chars, counter, size, mask, alphabet_length,
     )
     batch_count = batch_count + 1
 
@@ -391,10 +425,10 @@ fn generate_id_characters(
   Ok(String::from_array(id_chars))
 }
 
-///| Process a batch of random bytes and fill ID characters
-fn process_random_batch(
+///| Process a batch of random bytes and fill ID characters (optimized version)
+fn process_random_batch_optimized(
   random_bytes : Array[Int],
-  alphabet : String,
+  alphabet_chars : Array[Char],
   id_chars : Array[Char],
   start_counter : Int,
   target_size : Int,
@@ -406,14 +440,16 @@ fn process_random_batch(
   while byte_index < random_bytes.length() && counter < target_size {
     let byte = random_bytes[byte_index] & mask
     if byte < alphabet_length {
-      let char = alphabet.get_char(byte).unwrap()
-      id_chars[counter] = char
+      // Direct array access is faster than string.get_char()
+      id_chars[counter] = alphabet_chars[byte]
       counter = counter + 1
     }
     byte_index = byte_index + 1
   }
   counter
 }
+
+// Legacy function removed - now using optimized version directly
 
 ///| Handle the case where insufficient random characters were generated
 fn handle_insufficient_randomness(
@@ -445,6 +481,21 @@ fn handle_insufficient_randomness(
   Ok(())
 }
 
+///| Get precomputed optimal batch size for common alphabet sizes
+pub fn get_precomputed_batch_size(alphabet_length : Int) -> Option[Int] {
+  match alphabet_length {
+    2 => Some(64)   // Binary: 1 bit per char, high efficiency
+    4 => Some(32)   // Quaternary: 2 bits per char
+    8 => Some(21)   // Octal: ~2.67 bits per char
+    16 => Some(16)  // Hex: 4 bits per char
+    32 => Some(12)  // Base32: ~5 bits per char
+    64 => Some(10)  // Base64: 6 bits per char
+    128 => Some(8)  // Base128: ~7 bits per char
+    256 => Some(8)  // Base256: 8 bits per char
+    _ => None
+  }
+}
+
 ///| Calculate optimal batch size for random byte generation
 /// Uses entropy efficiency analysis to determine the best batch size
 fn calculate_optimal_batch_size(
@@ -452,20 +503,16 @@ fn calculate_optimal_batch_size(
   target_size : Int,
   mask : Int,
 ) -> Int {
-  // Pre-computed optimal batch sizes for common alphabet sizes
-  let optimized_step = match alphabet_length {
-    2 => 64 // Binary: 1 bit per char, high efficiency
-    4 => 32 // Quaternary: 2 bits per char
-    8 => 21 // Octal: ~2.67 bits per char
-    16 => 16 // Hex: 4 bits per char
-    32 => 12 // Base32: ~5 bits per char
-    64 => 10 // Base64: 6 bits per char
-    _ => {
+  // Try precomputed values first
+  let optimized_step = match get_precomputed_batch_size(alphabet_length) {
+    Some(precomputed) => precomputed
+    None => {
       // For other sizes, calculate based on entropy efficiency
-      // Estimate bytes needed considering rejection sampling
-      let efficiency_factor = alphabet_length.to_double() /
-        (mask + 1).to_double()
-      let estimated_bytes = (target_size.to_double() / efficiency_factor * 1.5).to_int()
+      // More precise efficiency calculation
+      let efficiency_factor = alphabet_length.to_double() / (mask + 1).to_double()
+      let waste_factor = 1.0 / efficiency_factor // How much we waste due to rejection
+      let safety_margin = 1.2 // 20% safety margin
+      let estimated_bytes = (target_size.to_double() * waste_factor * safety_margin).to_int()
 
       // Clamp to reasonable bounds
       if estimated_bytes < MIN_BATCH_SIZE {
@@ -479,8 +526,9 @@ fn calculate_optimal_batch_size(
   }
 
   // Ensure we don't generate more than needed for small IDs
-  if optimized_step > target_size * 2 {
-    target_size * 2
+  let max_reasonable = target_size * 2
+  if optimized_step > max_reasonable {
+    max_reasonable
   } else {
     optimized_step
   }

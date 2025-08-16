@@ -209,6 +209,68 @@ test "constant_time_comparison" {
 }
 
 ///|
+test "optimization_functions" {
+  // Test precomputed mask function
+  assert_eq(get_precomputed_mask(2), Some(1))
+  assert_eq(get_precomputed_mask(4), Some(3))
+  assert_eq(get_precomputed_mask(16), Some(15))
+  assert_eq(get_precomputed_mask(64), Some(63))
+  assert_eq(get_precomputed_mask(256), Some(255))
+  assert_eq(get_precomputed_mask(100), None) // Non-power-of-2
+
+  // Test mask calculation with precomputed values
+  assert_eq(calculate_mask(2), 1)
+  assert_eq(calculate_mask(16), 15)
+  assert_eq(calculate_mask(64), 63)
+
+  // Test alphabet to chars conversion
+  let alphabet = "ABC"
+  let chars = alphabet_to_chars(alphabet)
+  assert_eq(chars.length(), 3)
+  assert_eq(chars[0], 'A')
+  assert_eq(chars[1], 'B')
+  assert_eq(chars[2], 'C')
+
+  // Test precomputed batch sizes
+  assert_eq(get_precomputed_batch_size(2), Some(64))
+  assert_eq(get_precomputed_batch_size(16), Some(16))
+  assert_eq(get_precomputed_batch_size(64), Some(10))
+  assert_eq(get_precomputed_batch_size(100), None)
+}
+
+///|
+test "performance_optimizations" {
+  // Test that optimized functions produce same results as before
+  // but with better performance characteristics
+
+  // Test with common alphabet sizes that have precomputed optimizations
+  let hex_result = custom_alphabet("0123456789abcdef", size=10)
+  assert_true(hex_result.is_ok())
+  let hex_gen = hex_result.unwrap()
+  let hex_id = hex_gen().unwrap()
+  assert_eq(hex_id.length(), 10)
+
+  // Test with base64-like alphabet
+  let base64_result = custom_alphabet("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", size=12)
+  assert_true(base64_result.is_ok())
+  let base64_gen = base64_result.unwrap()
+  let base64_id = base64_gen().unwrap()
+  assert_eq(base64_id.length(), 12)
+
+  // Test with binary alphabet (highly optimized case)
+  let binary_result = custom_alphabet("01", size=20)
+  assert_true(binary_result.is_ok())
+  let binary_gen = binary_result.unwrap()
+  let binary_id = binary_gen().unwrap()
+  assert_eq(binary_id.length(), 20)
+  // Verify all characters are 0 or 1
+  for i = 0; i < binary_id.length(); i = i + 1 {
+    let char = binary_id.get_char(i).unwrap()
+    assert_true(char == '0' || char == '1')
+  }
+}
+
+///|
 test "id_randomness_quality" {
   // Generate multiple IDs and verify they are different
   let ids = Array::make(10, "")

@@ -455,3 +455,40 @@ test "custom_random_validation" {
   let result_invalid = custom_random("ABC", 5, invalid_random)
   assert_true(result_invalid.is_err())
 }
+
+///|
+test "insufficient_randomness_triggers_error" {
+  // This test verifies that the "fail-fast" mechanism works when the
+  // random byte generator consistently fails to provide usable values.
+
+  // A "malicious" random function that always returns bytes that will be rejected.
+  // For alphabet "abc" (length 3), the mask is 3 (binary 11).
+  // Any byte where (byte & 3) is >= 3 will be rejected.
+  // We return 3, which guarantees rejection.
+  let bad_random = fn(size : Int) -> Result[Array[Int], NanoidError] {
+    Ok(Array::make(size, 3))
+  }
+  let alphabet = "abc"
+  let size = 10
+
+  // Create a generator with the malicious random function.
+  let generator_result = custom_random(alphabet, size, bad_random)
+  assert_true(generator_result.is_ok())
+  let generator = generator_result.unwrap()
+
+  // Attempt to generate an ID. This should fail.
+  match generator() {
+    Ok(id) => {
+      // If it succeeds, the test fails.
+      println("Unexpected success generating ID: \{id}")
+      assert_true(false)
+    }
+    Err(e) => {
+      // Check that we got the correct error.
+      let error_string = e.to_string()
+      assert_true(
+        error_string.contains("Failed to generate sufficient random characters"),
+      )
+    }
+  }
+}

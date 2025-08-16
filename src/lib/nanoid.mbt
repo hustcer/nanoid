@@ -83,22 +83,19 @@ fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
   let mut seen : @immut/hashmap.T[Char, Int] = @immut/hashmap.new()
   for i = 0; i < alphabet.length(); i = i + 1 {
     match alphabet.get_char(i) {
-      Some(char) => {
+      Some(char) =>
         match seen.get(char) {
-          Some(first_pos) => {
+          Some(first_pos) =>
             // Duplicate found, return a detailed error.
             return InvalidAlphabet(
               RandomGenerationError(
                 "Duplicate character '\{char}' found at position \{i}, first seen at \{first_pos}",
               ),
             )
-          }
-          None => {
+          None =>
             // First time seeing this character, add it to the map with its index.
             seen = seen.add(char, i)
-          }
         }
-      }
       None =>
         return InvalidAlphabet(
           RandomGenerationError(

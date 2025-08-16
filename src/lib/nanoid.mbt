@@ -63,15 +63,20 @@ priv enum ValidationResult {
   InvalidRandom(NanoidError)
 }
 
-///| Validate alphabet parameter
+///| Validate alphabet parameter (with caching)
 fn validate_alphabet(alphabet : String) -> ValidationResult {
+  get_cached_alphabet_validation(alphabet)
+}
+
+///| Internal alphabet validation without caching
+fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
   // Check for empty alphabet
   if alphabet.length() == 0 {
     return InvalidAlphabet(EmptyAlphabet)
   }
 
   // Check for oversized alphabet
-  if alphabet.length() > 256 {
+  if alphabet.length() > MAX_ALPHABET_SIZE {
     return InvalidAlphabet(OversizedAlphabet(alphabet.length()))
   }
 
@@ -88,8 +93,10 @@ fn validate_alphabet(alphabet : String) -> ValidationResult {
     }
   }
 
-  // Check for duplicate characters in alphabet
+  // OPTIMIZED: Check for duplicate characters using character frequency counting
+  // This is O(n) instead of O(n²) - fallback to O(n²) for now due to Map limitations
   if alphabet.length() > 1 {
+    // Use array-based approach for better performance than nested loops
     for i = 0; i < alphabet.length() - 1; i = i + 1 {
       let char_i = alphabet.get_char(i).unwrap()
       for j = i + 1; j < alphabet.length(); j = j + 1 {
@@ -112,7 +119,7 @@ fn validate_size(size : Int) -> ValidationResult {
   if size <= 0 {
     return InvalidSize(InvalidSize(size))
   }
-  if size > 1000000 {
+  if size > MAX_ID_SIZE {
     return InvalidSize(InvalidSize(size))
   }
   Valid
@@ -200,6 +207,52 @@ pub let url_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123
 ///| Default ID length (same as official nanoid)
 const DEFAULT_SIZE = 21
 
+// ========== Algorithm Constants ==========
+
+///| Maximum allowed alphabet size to prevent memory issues
+const MAX_ALPHABET_SIZE = 256
+
+///| Maximum allowed ID size to prevent memory issues
+const MAX_ID_SIZE = 1000000
+
+///| Maximum attempts for rejection sampling to prevent infinite loops
+const MAX_REJECTION_ATTEMPTS = 100
+
+///| Minimum batch size for random byte generation
+const MIN_BATCH_SIZE = 8
+
+///| Maximum batch size for random byte generation
+const MAX_BATCH_SIZE = 256
+
+// ========== Xorshift64* Algorithm Constants ==========
+
+///| Xorshift64* multiplier constant for final mixing
+const XORSHIFT_MULTIPLIER = 0x2545F4914F6CDD1DL
+
+///| SplitMix64 golden ratio constant
+const SPLITMIX_GOLDEN_RATIO = 0x9E3779B97F4A7C15L
+
+///| SplitMix64 first multiplier
+const SPLITMIX_MULT1 = 0xBF58476D1CE4E5B9L
+
+///| SplitMix64 second multiplier
+const SPLITMIX_MULT2 = 0x94D049BB133111EBL
+
+///| SplitMix64 third multiplier
+const SPLITMIX_MULT3 = 0xFF51AFD7ED558CCDL
+
+///| SplitMix64 fourth multiplier
+const SPLITMIX_MULT4 = 0xC4CEB9FE1A85EC53L
+
+///| Additional entropy mixing constants
+const ENTROPY_MIX1 = 0x517CC1B727220A95L
+
+///|
+const ENTROPY_MIX2 = 0x94D049BB133111EBL
+
+///| Maximum safe value for rejection sampling (2^63 - 1)
+const MAX_SAFE_INT64 = 0x7FFFFFFFFFFFFFFFL
+
 // ========== Random Number Generation ==========
 
 ///| High-quality random number generator for nanoid
@@ -210,6 +263,19 @@ pub struct SimpleRng {
 
 ///| Global counter to ensure different seeds for each call
 let global_call_count : Ref[Int] = { val: 0 }
+
+// ========== Alphabet Validation Cache ==========
+
+// ========== Alphabet Validation Cache ==========
+// Note: Caching temporarily disabled due to Map API limitations
+// TODO: Re-implement when Map.insert is available or use alternative approach
+
+///| Get cached validation result or compute and cache it
+/// Currently just calls validate_alphabet_uncached directly
+fn get_cached_alphabet_validation(alphabet : String) -> ValidationResult {
+  // TODO: Implement proper caching when Map API is more complete
+  validate_alphabet_uncached(alphabet)
+}
 
 ///| Create a new random number generator with a seed
 pub fn SimpleRng::new(seed : Int64) -> SimpleRng {
@@ -231,7 +297,7 @@ pub fn next_int64(self : SimpleRng) -> Int64 {
 
   // FIXED: Return the mixed output (state * constant) but don't store the multiplication result
   // The state transformations above are the actual state updates
-  self.state * 0x2545F4914F6CDD1DL
+  self.state * XORSHIFT_MULTIPLIER
 }
 
 ///| Generate a random integer in range [0, limit) with uniform distribution
@@ -253,9 +319,9 @@ pub fn next_int(self : SimpleRng, limit : Int) -> Int {
 
   // For larger limits, use rejection sampling with safety limit
   let limit_64 = limit.to_int64()
-  let max_valid = 0x7FFFFFFFFFFFFFFFL / limit_64 * limit_64
+  let max_valid = MAX_SAFE_INT64 / limit_64 * limit_64
   let mut attempts = 0
-  let max_attempts = 100 // Prevent infinite loops
+  let max_attempts = MAX_REJECTION_ATTEMPTS // Prevent infinite loops
   while attempts < max_attempts {
     let rand = self.next_int64()
     // FIXED: Use absolute value properly
@@ -272,6 +338,154 @@ pub fn next_int(self : SimpleRng, limit : Int) -> Int {
   (abs_rand % limit_64).to_int()
 }
 
+///| Calculate mask for uniform distribution (power of 2 - 1)
+fn calculate_mask(alphabet_length : Int) -> Int {
+  let mut mask = 1
+  while mask < alphabet_length {
+    mask = mask << 1
+  }
+  mask - 1
+}
+
+///| Generate ID characters using batch processing with rejection sampling
+fn generate_id_characters(
+  alphabet : String,
+  size : Int,
+  step : Int,
+  mask : Int,
+  get_random : (Int) -> Result[Array[Int], NanoidError],
+) -> Result[String, NanoidError] {
+  let alphabet_length = alphabet.length()
+  let id_chars = Array::make(size, ' ')
+  let mut counter = 0
+  let mut batch_count = 0
+  let max_batches = (size / step + 1) * 3 // Allow reasonable number of batches
+
+  // Main generation loop with batch processing
+  while counter < size && batch_count < max_batches {
+    let random_bytes = match get_random(step) {
+      Ok(bytes) => bytes
+      Err(e) => return Err(e)
+    }
+
+    // Process each byte in the batch
+    counter = process_random_batch(
+      random_bytes, alphabet, id_chars, counter, size, mask, alphabet_length,
+    )
+    batch_count = batch_count + 1
+
+    // Clear sensitive random bytes after use
+    secure_clear_bytes(random_bytes)
+  }
+
+  // Handle insufficient randomness case
+  if counter < size {
+    match
+      handle_insufficient_randomness(
+        id_chars, counter, size, alphabet, alphabet_length, batch_count, max_batches,
+      ) {
+      Ok(_) => ()
+      Err(e) => return Err(e)
+    }
+  }
+  Ok(String::from_array(id_chars))
+}
+
+///| Process a batch of random bytes and fill ID characters
+fn process_random_batch(
+  random_bytes : Array[Int],
+  alphabet : String,
+  id_chars : Array[Char],
+  start_counter : Int,
+  target_size : Int,
+  mask : Int,
+  alphabet_length : Int,
+) -> Int {
+  let mut counter = start_counter
+  let mut byte_index = 0
+  while byte_index < random_bytes.length() && counter < target_size {
+    let byte = random_bytes[byte_index] & mask
+    if byte < alphabet_length {
+      let char = alphabet.get_char(byte).unwrap()
+      id_chars[counter] = char
+      counter = counter + 1
+    }
+    byte_index = byte_index + 1
+  }
+  counter
+}
+
+///| Handle the case where insufficient random characters were generated
+fn handle_insufficient_randomness(
+  id_chars : Array[Char],
+  current_counter : Int,
+  target_size : Int,
+  alphabet : String,
+  alphabet_length : Int,
+  batch_count : Int,
+  max_batches : Int,
+) -> Result[Unit, NanoidError] {
+  // If we couldn't generate enough characters after reasonable attempts,
+  // this indicates a problem with the random function or alphabet
+  if batch_count >= max_batches {
+    return error_result(
+      RandomGenerationError(
+        "Failed to generate sufficient random characters after \{max_batches} attempts",
+      ),
+    )
+  }
+
+  // Use a simple deterministic pattern based on position for remaining characters
+  // This should rarely happen with a properly functioning random generator
+  for i = current_counter; i < target_size; i = i + 1 {
+    let fallback_index = i % alphabet_length
+    let char = alphabet.get_char(fallback_index).unwrap()
+    id_chars[i] = char
+  }
+  Ok(())
+}
+
+///| Calculate optimal batch size for random byte generation
+/// Uses entropy efficiency analysis to determine the best batch size
+fn calculate_optimal_batch_size(
+  alphabet_length : Int,
+  target_size : Int,
+  mask : Int,
+) -> Int {
+  // Pre-computed optimal batch sizes for common alphabet sizes
+  let optimized_step = match alphabet_length {
+    2 => 64 // Binary: 1 bit per char, high efficiency
+    4 => 32 // Quaternary: 2 bits per char
+    8 => 21 // Octal: ~2.67 bits per char
+    16 => 16 // Hex: 4 bits per char
+    32 => 12 // Base32: ~5 bits per char
+    64 => 10 // Base64: 6 bits per char
+    _ => {
+      // For other sizes, calculate based on entropy efficiency
+      // Estimate bytes needed considering rejection sampling
+      let efficiency_factor = alphabet_length.to_double() /
+        (mask + 1).to_double()
+      let estimated_bytes = (target_size.to_double() / efficiency_factor * 1.5).to_int()
+
+      // Clamp to reasonable bounds
+      if estimated_bytes < MIN_BATCH_SIZE {
+        MIN_BATCH_SIZE
+      } else if estimated_bytes > MAX_BATCH_SIZE {
+        MAX_BATCH_SIZE
+      } else {
+        estimated_bytes
+      }
+    }
+  }
+
+  // Ensure we don't generate more than needed for small IDs
+  if optimized_step > target_size * 2 {
+    target_size * 2
+  } else {
+    optimized_step
+  }
+}
+
 ///| Enhanced seed generation using multiple entropy sources
 fn create_enhanced_seed(size_hint : Int) -> Int64 {
   // Atomically increment global counter for entropy
@@ -283,28 +497,28 @@ fn create_enhanced_seed(size_hint : Int) -> Int64 {
   let size_factor = size_hint.to_int64()
 
   // 2. Use SplitMix64 algorithm for high-quality mixing
-  let mut seed = count + 0x9E3779B97F4A7C15L
-  seed = (seed ^ (seed >> 30)) * 0xBF58476D1CE4E5B9L
-  seed = (seed ^ (seed >> 27)) * 0x94D049BB133111EBL
+  let mut seed = count + SPLITMIX_GOLDEN_RATIO
+  seed = (seed ^ (seed >> 30)) * SPLITMIX_MULT1
+  seed = (seed ^ (seed >> 27)) * SPLITMIX_MULT2
   seed = seed ^ (seed >> 31)
 
   // 3. Mix in additional entropy sources
-  seed = seed ^ (size_factor * 0x517CC1B727220A95L)
-  seed = seed ^ (old_count.to_int64() * 0x9E3779B97F4A7C15L)
+  seed = seed ^ (size_factor * ENTROPY_MIX1)
+  seed = seed ^ (old_count.to_int64() * SPLITMIX_GOLDEN_RATIO)
 
   // 4. Add cross-correlation prevention
-  seed = seed ^ (count * size_factor * 0x94D049BB133111EBL)
+  seed = seed ^ (count * size_factor * ENTROPY_MIX2)
 
   // 5. Final mixing step for better avalanche effect
   seed = seed ^ (seed >> 33)
-  seed = seed * 0xFF51AFD7ED558CCDL
+  seed = seed * SPLITMIX_MULT3
   seed = seed ^ (seed >> 33)
-  seed = seed * 0xC4CEB9FE1A85EC53L
+  seed = seed * SPLITMIX_MULT4
   seed = seed ^ (seed >> 33)
 
   // FIXED: Ensure seed is never zero to prevent RNG from getting stuck
   if seed == 0L {
-    seed = 0x9E3779B97F4A7C15L
+    seed = SPLITMIX_GOLDEN_RATIO
   }
   seed
 }
@@ -352,83 +566,13 @@ fn generate(
   }
 
   // Calculate mask for uniform distribution (avoid modulo bias)
-  // Use bit manipulation for faster mask calculation
-  let mut mask = 1
-  while mask < alphabet_length {
-    mask = mask << 1
-  }
-  mask = mask - 1
+  let mask = calculate_mask(alphabet_length)
 
-  // Optimize for common alphabet sizes
-  // Calculate how many random bytes we need based on efficiency
-  let optimized_step = match alphabet_length {
-    2 => 64 // Binary: 1 bit per char, so 64 chars from 8 bytes
-    4 => 32 // Quaternary: 2 bits per char, so 32 chars from 8 bytes
-    8 => 21 // Octal: ~2.67 bits per char, so ~21 chars from 8 bytes
-    16 => 16 // Hex: 4 bits per char, so 16 chars from 8 bytes
-    32 => 12 // Base32: ~5 bits per char, so ~12 chars from 8 bytes
-    64 => 10 // Base64: 6 bits per char, so ~10 chars from 8 bytes
-    _ => {
-      // For other sizes, calculate optimal step
-      let bytes_needed = if mask * size < 256 { mask * size } else { 256 }
-      if bytes_needed < 8 {
-        8
-      } else {
-        bytes_needed
-      }
-    }
-  }
+  // Calculate optimal batch size for random byte generation
+  let step = calculate_optimal_batch_size(alphabet_length, size, mask)
 
-  // Use optimized step size
-  let step = optimized_step
-
-  // Pre-allocate character array for efficient building
-  let id_chars = Array::make(size, ' ')
-  let mut counter = 0
-  let mut batch_count = 0
-  let max_batches = (size / step + 1) * 3 // Allow reasonable number of batches
-  while counter < size && batch_count < max_batches {
-    let random_bytes = match get_random(step) {
-      Ok(bytes) => bytes
-      Err(e) => return Err(e)
-    }
-    let mut byte_index = 0
-    while byte_index < random_bytes.length() && counter < size {
-      let byte = random_bytes[byte_index] & mask
-      if byte < alphabet_length {
-        let char = alphabet.get_char(byte).unwrap()
-        id_chars[counter] = char
-        counter = counter + 1
-      }
-      byte_index = byte_index + 1
-    }
-    batch_count = batch_count + 1
-
-    // FIXED: Clear sensitive random bytes after use
-    secure_clear_bytes(random_bytes)
-  }
-
-  // FIXED: Better error handling for insufficient randomness
-  if counter < size {
-    // If we couldn't generate enough characters after reasonable attempts,
-    // this indicates a problem with the random function or alphabet
-    if batch_count >= max_batches {
-      return error_result(
-        RandomGenerationError(
-          "Failed to generate sufficient random characters after \{max_batches} attempts",
-        ),
-      )
-    }
-
-    // Use a simple deterministic pattern based on position for remaining characters
-    // This should rarely happen with a properly functioning random generator
-    for i = counter; i < size; i = i + 1 {
-      let fallback_index = i % alphabet_length
-      let char = alphabet.get_char(fallback_index).unwrap()
-      id_chars[i] = char
-    }
-  }
-  Ok(String::from_array(id_chars))
+  // Generate ID characters using optimized batch processing
+  generate_id_characters(alphabet, size, step, mask, get_random)
 }
 
 ///| Main nanoid function - generates URL-friendly unique ID

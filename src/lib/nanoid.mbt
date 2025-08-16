@@ -625,28 +625,33 @@ pub fn get_batch_size_recommendation(
 
 ///| Simple alphabet cache to avoid repeated conversions
 /// Note: This is a basic implementation. In production, consider using a proper LRU cache
-let alphabet_char_cache : Ref[Array[(String, Array[Char])]] = { val: Array::new() }
+let alphabet_char_cache : Ref[@immut/hashmap.T[String, Array[Char]]] = {
+  val: @immut/hashmap.new()
+}
 
 ///| Get cached character array for alphabet, or convert and cache it
 pub fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
   let cache = alphabet_char_cache.val
 
-  // Check if alphabet is already cached
-  for i = 0; i < cache.length(); i = i + 1 {
-    let (cached_alphabet, cached_chars) = cache[i]
-    if cached_alphabet == alphabet {
+  // Check if alphabet is already cached using the map
+  match cache.get(alphabet) {
+    Some(cached_chars) => {
+      // Cache hit
       return cached_chars
     }
-  }
+    None => {
+      // Cache miss: convert and then cache
+      let chars = alphabet_to_chars(alphabet)
 
-  // Not cached, convert and cache (with simple size limit)
-  let chars = alphabet_to_chars(alphabet)
-  if cache.length() < 16 {  // Limit cache size to prevent memory bloat
-    cache.push((alphabet, chars))
-    alphabet_char_cache.val = cache
-  }
+      // Only cache if the cache size is within the limit to prevent memory bloat
+      if cache.size() < 16 {
+        let new_cache = cache.add(alphabet, chars)
+        alphabet_char_cache.val = new_cache
+      }
 
-  chars
+      return chars
+    }
+  }
 }
 
 ///| Internal function to generate secure random bytes

@@ -4,13 +4,13 @@
 test "nanoid_basic_functionality" {
   // Test basic nanoid generation
   let result = nanoid()
-  assert_true(result.is_ok())
+  assert_true(result is Ok(_))
   let id = result.unwrap()
   assert_eq(id.length(), 21)
 
   // Test custom size
   let result_10 = nanoid(size=10)
-  assert_true(result_10.is_ok())
+  assert_true(result_10 is Ok(_))
   let id_10 = result_10.unwrap()
   assert_eq(id_10.length(), 10)
 }
@@ -19,21 +19,21 @@ test "nanoid_basic_functionality" {
 test "nanoid_error_handling" {
   // Test invalid size
   let result = nanoid(size=-1)
-  assert_true(result.is_err())
+  assert_true(result is Err(_))
 
   // Test zero size
   let result_zero = nanoid(size=0)
-  assert_true(result_zero.is_err())
+  assert_true(result_zero is Err(_))
 }
 
 ///|
 test "custom_alphabet_basic" {
   // Test valid custom alphabet
   let result = custom_alphabet("ABC", size=5)
-  assert_true(result.is_ok())
+  assert_true(result is Ok(_))
   let generator = result.unwrap()
   let id_result = generator()
-  assert_true(id_result.is_ok())
+  assert_true(id_result is Ok(_))
   let id = id_result.unwrap()
   assert_eq(id.length(), 5)
 
@@ -48,11 +48,11 @@ test "custom_alphabet_basic" {
 test "custom_alphabet_error_handling" {
   // Test empty alphabet
   let result = custom_alphabet("", size=5)
-  assert_true(result.is_err())
+  assert_true(result is Err(_))
 
   // Test invalid size
   let result_invalid = custom_alphabet("ABC", size=-1)
-  assert_true(result_invalid.is_err())
+  assert_true(result_invalid is Err(_))
 }
 
 ///|
@@ -103,10 +103,10 @@ test "alphabet_presets" {
 test "single_character_alphabet" {
   // Test edge case: single character alphabet
   let result = custom_alphabet("X", size=5)
-  assert_true(result.is_ok())
+  assert_true(result is Ok(_))
   let generator = result.unwrap()
   let id_result = generator()
-  assert_true(id_result.is_ok())
+  assert_true(id_result is Ok(_))
   let id = id_result.unwrap()
   assert_eq(id, "XXXXX")
 }
@@ -348,7 +348,7 @@ test "performance_optimizations" {
 
   // Test with common alphabet sizes that have precomputed optimizations
   let hex_result = custom_alphabet("0123456789abcdef", size=10)
-  assert_true(hex_result.is_ok())
+  assert_true(hex_result is Ok(_))
   let hex_gen = hex_result.unwrap()
   let hex_id = hex_gen().unwrap()
   assert_eq(hex_id.length(), 10)
@@ -358,14 +358,14 @@ test "performance_optimizations" {
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
     size=12,
   )
-  assert_true(base64_result.is_ok())
+  assert_true(base64_result is Ok(_))
   let base64_gen = base64_result.unwrap()
   let base64_id = base64_gen().unwrap()
   assert_eq(base64_id.length(), 12)
 
   // Test with binary alphabet (highly optimized case)
   let binary_result = custom_alphabet("01", size=20)
-  assert_true(binary_result.is_ok())
+  assert_true(binary_result is Ok(_))
   let binary_gen = binary_result.unwrap()
   let binary_id = binary_gen().unwrap()
   assert_eq(binary_id.length(), 20)
@@ -401,15 +401,15 @@ test "id_randomness_quality" {
 test "edge_cases_and_boundaries" {
   // Test maximum size limit
   let result_max = nanoid(size=1000000)
-  assert_true(result_max.is_ok())
+  assert_true(result_max is Ok(_))
 
   // Test size just over limit
   let result_over = nanoid(size=1000001)
-  assert_true(result_over.is_err())
+  assert_true(result_over is Err(_))
 
   // Test single character ID
   let result_single = nanoid(size=1)
-  assert_true(result_single.is_ok())
+  assert_true(result_single is Ok(_))
   let single_id = result_single.unwrap()
   assert_eq(single_id.length(), 1)
 
@@ -419,12 +419,12 @@ test "edge_cases_and_boundaries" {
     large_alphabet = large_alphabet + Int::unsafe_to_char(33 + i).to_string() // Start from '!' (33) to avoid duplicates
   }
   let result_large = custom_alphabet(large_alphabet, size=5)
-  assert_true(result_large.is_ok())
+  assert_true(result_large is Ok(_))
 
   // Test alphabet just over limit
   let oversized_alphabet = large_alphabet + "X"
   let result_oversized = custom_alphabet(oversized_alphabet, size=5)
-  assert_true(result_oversized.is_err())
+  assert_true(result_oversized is Err(_))
 }
 
 ///|
@@ -455,14 +455,14 @@ test "custom_random_validation" {
     Ok(Array::make(size, 42))
   }
   let result = custom_random("ABC", 5, valid_random)
-  assert_true(result.is_ok())
+  assert_true(result is Ok(_))
 
   // Test invalid custom random function (wrong array length)
   let invalid_random = fn(_size : Int) -> Result[Array[Int], NanoidError] {
     Ok(Array::make(2, 42)) // Always returns 2 elements regardless of requested size
   }
   let result_invalid = custom_random("ABC", 5, invalid_random)
-  assert_true(result_invalid.is_err())
+  assert_true(result_invalid is Err(_))
 }
 
 ///|
@@ -482,7 +482,7 @@ test "insufficient_randomness_triggers_error" {
 
   // Create a generator with the malicious random function.
   let generator_result = custom_random(alphabet, size, bad_random)
-  assert_true(generator_result.is_ok())
+  assert_true(generator_result is Ok(_))
   let generator = generator_result.unwrap()
 
   // Attempt to generate an ID. This should fail.

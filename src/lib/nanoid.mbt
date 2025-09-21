@@ -80,7 +80,7 @@ fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
 
   // Use an immutable HashMap to efficiently check for duplicates and provide rich error messages.
   // The map stores the character and the index where it was first seen.
-  let mut seen : @immut/hashmap.T[Char, Int] = @immut/hashmap.new()
+  let mut seen : @immut/hashmap.HashMap[Char, Int] = @immut/hashmap.new()
   for i = 0; i < alphabet.length(); i = i + 1 {
     match alphabet.get_char(i) {
       Some(char) =>
@@ -657,7 +657,7 @@ const MAX_ALPHABET_CACHE_SIZE = 16
 
 ///| Simple alphabet cache to avoid repeated conversions
 /// Note: This is a basic implementation. In production, consider using a proper LRU cache
-let alphabet_char_cache : Ref[@immut/hashmap.T[String, Array[Char]]] = {
+let alphabet_char_cache : Ref[@immut/hashmap.HashMap[String, Array[Char]]] = {
   val: @immut/hashmap.new(),
 }
 

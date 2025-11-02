@@ -4,7 +4,8 @@
 
 // ========== Error Handling ==========
 
-///| Error types for nanoid operations
+///|
+/// Error types for nanoid operations
 pub enum NanoidError {
   EmptyAlphabet
   OversizedAlphabet(Int) // Contains the actual length
@@ -13,7 +14,8 @@ pub enum NanoidError {
   RandomGenerationError(String)
 }
 
-///| Convert NanoidError to string representation
+///|
+/// Convert NanoidError to string representation
 pub fn NanoidError::to_string(self : NanoidError) -> String {
   match self {
     EmptyAlphabet => "Alphabet cannot be empty"
@@ -26,7 +28,8 @@ pub fn NanoidError::to_string(self : NanoidError) -> String {
   }
 }
 
-///| Convert NanoidError to detailed string representation with helpful guidance
+///|
+/// Convert NanoidError to detailed string representation with helpful guidance
 pub fn NanoidError::to_string_detailed(self : NanoidError) -> String {
   match self {
     EmptyAlphabet =>
@@ -46,14 +49,16 @@ pub fn NanoidError::to_string_detailed(self : NanoidError) -> String {
   }
 }
 
-///| Helper function to create error results
+///|
+/// Helper function to create error results
 fn[T] error_result(error : NanoidError) -> Result[T, NanoidError] {
   Err(error)
 }
 
 // ========== Unified Validation Module ==========
 
-///| Validation result for parameter checking
+///|
+/// Validation result for parameter checking
 priv enum ValidationResult {
   Valid
   InvalidAlphabet(NanoidError)
@@ -61,12 +66,14 @@ priv enum ValidationResult {
   InvalidRandom(NanoidError)
 }
 
-///| Validate alphabet parameter (with caching)
+///|
+/// Validate alphabet parameter (with caching)
 fn validate_alphabet(alphabet : String) -> ValidationResult {
   get_cached_alphabet_validation(alphabet)
 }
 
-///| Internal alphabet validation without caching
+///|
+/// Internal alphabet validation without caching
 fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
   // Check for empty alphabet
   if alphabet.length() == 0 {
@@ -107,7 +114,8 @@ fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
   Valid
 }
 
-///| Validate size parameter
+///|
+/// Validate size parameter
 fn validate_size(size : Int) -> ValidationResult {
   if size <= 0 {
     return InvalidSize(SizeTooSmall(size))
@@ -118,7 +126,8 @@ fn validate_size(size : Int) -> ValidationResult {
   Valid
 }
 
-///| Validate random function parameter
+///|
+/// Validate random function parameter
 fn validate_random_function(
   random : (Int) -> Result[Array[Int], NanoidError],
 ) -> ValidationResult {
@@ -138,7 +147,8 @@ fn validate_random_function(
   }
 }
 
-///| Validate both alphabet and size parameters
+///|
+/// Validate both alphabet and size parameters
 fn validate_parameters(alphabet : String, size : Int) -> ValidationResult {
   match validate_alphabet(alphabet) {
     Valid => validate_size(size)
@@ -146,7 +156,8 @@ fn validate_parameters(alphabet : String, size : Int) -> ValidationResult {
   }
 }
 
-///| Validate alphabet, size, and random function parameters
+///|
+/// Validate alphabet, size, and random function parameters
 fn validate_all_parameters(
   alphabet : String,
   size : Int,
@@ -158,7 +169,8 @@ fn validate_all_parameters(
   }
 }
 
-///| Constant-time string comparison to prevent timing attacks
+///|
+/// Constant-time string comparison to prevent timing attacks
 /// This is important for security-sensitive applications
 /// Usage: Use this when comparing sensitive strings like tokens or IDs
 pub fn constant_time_eq(a : String, b : String) -> Bool {
@@ -180,7 +192,8 @@ pub fn constant_time_eq(a : String, b : String) -> Bool {
   result == 0
 }
 
-///| Secure memory clearing for sensitive data (enhanced)
+///|
+/// Secure memory clearing for sensitive data (enhanced)
 pub fn secure_clear_bytes(bytes : Array[Int]) -> Unit {
   // Clear the array contents to prevent sensitive data from remaining in memory
   // Use multiple passes to make it harder for compiler to optimize away
@@ -198,75 +211,95 @@ pub fn secure_clear_bytes(bytes : Array[Int]) -> Unit {
 
 // ========== Constants and Alphabets ==========
 
-///| Default URL-friendly alphabet (official nanoid order)
+///|
+/// Default URL-friendly alphabet (official nanoid order)
 /// Uses the same character order as official nanoid: A-Z, a-z, 0-9, underscore, hyphen
 pub let url_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
 
-///| Default ID length (same as official nanoid)
+///|
+/// Default ID length (same as official nanoid)
 const DEFAULT_SIZE = 21
 
 // ========== Algorithm Constants ==========
 
-///| Maximum allowed alphabet size to prevent memory issues
+///|
+/// Maximum allowed alphabet size to prevent memory issues
 const MAX_ALPHABET_SIZE = 256
 
-///| Maximum allowed ID size to prevent memory issues
+///|
+/// Maximum allowed ID size to prevent memory issues
 const MAX_ID_SIZE = 1000000
 
-///| Safety factor for batch generation attempts to prevent infinite loops
+///|
+/// Safety factor for batch generation attempts to prevent infinite loops
 const BATCH_GENERATION_SAFETY_FACTOR = 3
 
-///| Maximum attempts for rejection sampling to prevent infinite loops
+///|
+/// Maximum attempts for rejection sampling to prevent infinite loops
 const MAX_REJECTION_ATTEMPTS = 100
 
-///| Minimum batch size for random byte generation
+///|
+/// Minimum batch size for random byte generation
 const MIN_BATCH_SIZE = 8
 
-///| Maximum batch size for random byte generation
+///|
+/// Maximum batch size for random byte generation
 const MAX_BATCH_SIZE = 256
 
 // ========== Xorshift64* Algorithm Constants ==========
 
-///| Xorshift64* multiplier constant for final mixing
+///|
+/// Xorshift64* multiplier constant for final mixing
 const XORSHIFT_MULTIPLIER = 0x2545F4914F6CDD1DL
 
-///| SplitMix64 golden ratio constant
+///|
+/// SplitMix64 golden ratio constant
 const SPLITMIX_GOLDEN_RATIO = 0x9E3779B97F4A7C15L
 
-///| SplitMix64 first multiplier
+///|
+/// SplitMix64 first multiplier
 const SPLITMIX_MULT1 = 0xBF58476D1CE4E5B9L
 
-///| SplitMix64 second multiplier
+///|
+/// SplitMix64 second multiplier
 const SPLITMIX_MULT2 = 0x94D049BB133111EBL
 
-///| SplitMix64 third multiplier
+///|
+/// SplitMix64 third multiplier
 const SPLITMIX_MULT3 = 0xFF51AFD7ED558CCDL
 
-///| SplitMix64 fourth multiplier
+///|
+/// SplitMix64 fourth multiplier
 const SPLITMIX_MULT4 = 0xC4CEB9FE1A85EC53L
 
-///| Additional entropy mixing constants
+///|
+/// Additional entropy mixing constants
 const ENTROPY_MIX1 = 0x517CC1B727220A95L
 
-///| Second entropy mixing constant for cross-correlation prevention
+///|
+/// Second entropy mixing constant for cross-correlation prevention
 const ENTROPY_MIX2 = 0x94D049BB133111EBL
 
-///| Maximum safe value for rejection sampling (2^63 - 1)
+///|
+/// Maximum safe value for rejection sampling (2^63 - 1)
 const MAX_SAFE_INT64 = 0x7FFFFFFFFFFFFFFFL
 
 // ========== Random Number Generation ==========
 
-///| High-quality random number generator for nanoid
+///|
+/// High-quality random number generator for nanoid
 /// Uses xorshift algorithm for better randomness distribution
 pub struct SimpleRng {
   mut state : Int64
 }
 
-///| Global counter to ensure different seeds for each call
+///|
+/// Global counter to ensure different seeds for each call
 /// Note: In a multi-threaded environment, this should use atomic operations
 pub let global_call_count : Ref[Int] = { val: 0 }
 
-///| Thread-safe increment of global counter (simulated atomic operation)
+///|
+/// Thread-safe increment of global counter (simulated atomic operation)
 pub fn atomic_increment_counter() -> Int {
   // In a real implementation, this should use atomic compare-and-swap
   // For now, we simulate thread safety with multiple reads to detect changes
@@ -299,20 +332,23 @@ pub fn atomic_increment_counter() -> Int {
 // Note: Caching temporarily disabled due to Map API limitations
 // TODO: Re-implement when Map.insert is available or use alternative approach
 
-///| Get cached validation result or compute and cache it
+///|
+/// Get cached validation result or compute and cache it
 /// Currently just calls validate_alphabet_uncached directly
 fn get_cached_alphabet_validation(alphabet : String) -> ValidationResult {
   // TODO: Implement proper caching when Map API is more complete
   validate_alphabet_uncached(alphabet)
 }
 
-///| Create a new random number generator with a seed
+///|
+/// Create a new random number generator with a seed
 pub fn SimpleRng::new(seed : Int64) -> SimpleRng {
   { state: seed }
 }
 
-///| Generate the next random 64-bit integer using xorshift64*
-pub fn next_int64(self : SimpleRng) -> Int64 {
+///|
+/// Generate the next random 64-bit integer using xorshift64*
+pub fn SimpleRng::next_int64(self : SimpleRng) -> Int64 {
   // Xorshift64* algorithm - high quality PRNG
   // Avoid zero state which would cause the generator to get stuck
   if self.state == 0L {
@@ -328,8 +364,9 @@ pub fn next_int64(self : SimpleRng) -> Int64 {
   self.state * XORSHIFT_MULTIPLIER
 }
 
-///| Generate a random integer in range [0, limit) with uniform distribution
-pub fn next_int(self : SimpleRng, limit : Int) -> Int {
+///|
+/// Generate a random integer in range [0, limit) with uniform distribution
+pub fn SimpleRng::next_int(self : SimpleRng, limit : Int) -> Int {
   if limit <= 0 {
     return 0
   }
@@ -367,7 +404,8 @@ pub fn next_int(self : SimpleRng, limit : Int) -> Int {
 
 // Performance utility functions removed - can be added back when needed
 
-///| Convert alphabet string to character array for efficient access
+///|
+/// Convert alphabet string to character array for efficient access
 pub fn alphabet_to_chars(alphabet : String) -> Array[Char] {
   let chars = Array::make(alphabet.length(), ' ')
   for i = 0; i < alphabet.length(); i = i + 1 {
@@ -376,7 +414,8 @@ pub fn alphabet_to_chars(alphabet : String) -> Array[Char] {
   chars
 }
 
-///| Get precomputed mask for common alphabet sizes
+///|
+/// Get precomputed mask for common alphabet sizes
 pub fn get_precomputed_mask(alphabet_length : Int) -> Int? {
   match alphabet_length {
     2 => Some(1) // 2^1 - 1
@@ -391,7 +430,8 @@ pub fn get_precomputed_mask(alphabet_length : Int) -> Int? {
   }
 }
 
-///| Calculate mask for uniform distribution (power of 2 - 1)
+///|
+/// Calculate mask for uniform distribution (power of 2 - 1)
 /// Uses precomputed values for common sizes, falls back to calculation for others
 pub fn calculate_mask(alphabet_length : Int) -> Int {
   match get_precomputed_mask(alphabet_length) {
@@ -407,7 +447,8 @@ pub fn calculate_mask(alphabet_length : Int) -> Int {
   }
 }
 
-///| Generate ID characters using batch processing with rejection sampling (optimized)
+///|
+/// Generate ID characters using batch processing with rejection sampling (optimized)
 fn generate_id_characters(
   alphabet : String,
   size : Int,
@@ -449,7 +490,8 @@ fn generate_id_characters(
   Ok(String::from_array(id_chars))
 }
 
-///| Process a batch of random bytes and fill ID characters (optimized version)
+///|
+/// Process a batch of random bytes and fill ID characters (optimized version)
 fn process_random_batch_optimized(
   random_bytes : Array[Int],
   alphabet_chars : Array[Char],
@@ -475,7 +517,8 @@ fn process_random_batch_optimized(
 
 // Legacy function removed - now using optimized version directly
 
-///| Handle the case where insufficient random characters were generated (optimized)
+///|
+/// Handle the case where insufficient random characters were generated (optimized)
 fn handle_insufficient_randomness(
   batch_count : Int,
 ) -> Result[Unit, NanoidError] {
@@ -511,7 +554,8 @@ fn handle_insufficient_randomness(
 
 ///|   keeps semantics minimal while enabling single-batch generation for common alphabets
 
-///|   like 64 (URL/base64) and 32 (base32) when size is within limits.
+///|
+///   like 64 (URL/base64) and 32 (base32) when size is within limits.
 pub fn get_precomputed_batch_size(
   alphabet_length : Int,
   target_size : Int,
@@ -531,7 +575,8 @@ pub fn get_precomputed_batch_size(
   None
 }
 
-///| Calculate optimal batch size for random byte generation
+///|
+/// Calculate optimal batch size for random byte generation
 /// Uses entropy efficiency analysis to determine the best batch size
 fn calculate_optimal_batch_size(
   alphabet_length : Int,
@@ -570,7 +615,8 @@ fn calculate_optimal_batch_size(
   }
 }
 
-///| Enhanced seed generation using multiple entropy sources (improved security)
+///|
+/// Enhanced seed generation using multiple entropy sources (improved security)
 fn create_enhanced_seed(size_hint : Int) -> Int64 {
   // Thread-safe increment of global counter for entropy
   let old_count = global_call_count.val
@@ -618,7 +664,8 @@ fn create_enhanced_seed(size_hint : Int) -> Int64 {
   seed
 }
 
-///| Count the number of set bits in an Int64 (for entropy quality check)
+///|
+/// Count the number of set bits in an Int64 (for entropy quality check)
 pub fn count_set_bits(n : Int64) -> Int {
   let mut count = 0
   let mut num = n
@@ -629,7 +676,8 @@ pub fn count_set_bits(n : Int64) -> Int {
   count
 }
 
-///| Calculate entropy efficiency for a given alphabet size and mask
+///|
+/// Calculate entropy efficiency for a given alphabet size and mask
 pub fn calculate_entropy_efficiency(
   alphabet_length : Int,
   mask : Int,
@@ -637,13 +685,15 @@ pub fn calculate_entropy_efficiency(
   alphabet_length.to_double() / (mask + 1).to_double()
 }
 
-///| Estimate waste factor for rejection sampling
+///|
+/// Estimate waste factor for rejection sampling
 pub fn calculate_waste_factor(alphabet_length : Int, mask : Int) -> Double {
   let efficiency = calculate_entropy_efficiency(alphabet_length, mask)
   1.0 / efficiency
 }
 
-///| Get optimal batch size recommendation for given parameters
+///|
+/// Get optimal batch size recommendation for given parameters
 pub fn get_batch_size_recommendation(
   alphabet_length : Int,
   target_size : Int,
@@ -652,16 +702,19 @@ pub fn get_batch_size_recommendation(
   calculate_optimal_batch_size(alphabet_length, target_size, mask)
 }
 
-///| Maximum number of alphabets to store in the cache.
+///|
+/// Maximum number of alphabets to store in the cache.
 const MAX_ALPHABET_CACHE_SIZE = 16
 
-///| Simple alphabet cache to avoid repeated conversions
+///|
+/// Simple alphabet cache to avoid repeated conversions
 /// Note: This is a basic implementation. In production, consider using a proper LRU cache
 let alphabet_char_cache : Ref[@immut/hashmap.HashMap[String, Array[Char]]] = {
   val: @immut/hashmap.new(),
 }
 
-///| Get cached character array for alphabet, or convert and cache it
+///|
+/// Get cached character array for alphabet, or convert and cache it
 pub fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
   let cache = alphabet_char_cache.val
 
@@ -675,7 +728,7 @@ pub fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
       let chars = alphabet_to_chars(alphabet)
 
       // Only cache if the cache size is within the limit to prevent memory bloat
-      if cache.size() < MAX_ALPHABET_CACHE_SIZE {
+      if cache.length() < MAX_ALPHABET_CACHE_SIZE {
         let new_cache = cache.add(alphabet, chars)
         alphabet_char_cache.val = new_cache
       }
@@ -684,7 +737,8 @@ pub fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
   }
 }
 
-///| Internal function to generate secure random bytes
+///|
+/// Internal function to generate secure random bytes
 fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
   // Create high-quality seed using enhanced algorithm
   let mut seed = create_enhanced_seed(size)
@@ -703,7 +757,8 @@ fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
   Ok(bytes)
 }
 
-///| Internal function to generate ID with given alphabet, size, and random function
+///|
+/// Internal function to generate ID with given alphabet, size, and random function
 /// Returns Result with ID string or NanoidError for invalid parameters
 fn generate(
   alphabet : String,
@@ -735,30 +790,33 @@ fn generate(
   generate_id_characters(alphabet, size, step, mask, get_random)
 }
 
-///| Main nanoid function - generates URL-friendly unique ID
+///|
+/// Main nanoid function - generates URL-friendly unique ID
 /// Generates secure random IDs using the default URL-safe alphabet
 /// Returns Result with ID string or NanoidError for invalid parameters
 /// Usage: nanoid() generates 21-character ID, nanoid(size=10) generates 10-character ID
-pub fn nanoid(size~ : Int = DEFAULT_SIZE) -> Result[String, NanoidError] {
+pub fn nanoid(size? : Int = DEFAULT_SIZE) -> Result[String, NanoidError] {
   generate(url_alphabet, size, get_random_bytes)
 }
 
-///| Convenience function that returns empty string on error (for backward compatibility)
+///|
+/// Convenience function that returns empty string on error (for backward compatibility)
 /// Usage: nanoid_or_empty() generates 21-character ID or empty string on error
-pub fn nanoid_or_empty(size~ : Int = DEFAULT_SIZE) -> String {
+pub fn nanoid_or_empty(size? : Int = DEFAULT_SIZE) -> String {
   match nanoid(size~) {
     Ok(id) => id
     Err(_) => ""
   }
 }
 
-///| Custom alphabet function - returns a nanoid generator with custom alphabet
+///|
+/// Custom alphabet function - returns a nanoid generator with custom alphabet
 /// Creates a generator function that uses the specified alphabet and size
 /// Returns Result with generator function or NanoidError for invalid parameters
 /// Usage: let gen = custom_alphabet("abc123", size=8)?; let id = gen()?
 pub fn custom_alphabet(
   alphabet : String,
-  size~ : Int = DEFAULT_SIZE,
+  size? : Int = DEFAULT_SIZE,
 ) -> Result[() -> Result[String, NanoidError], NanoidError] {
   // Use unified validation
   match validate_parameters(alphabet, size) {
@@ -772,11 +830,12 @@ pub fn custom_alphabet(
   }
 }
 
-///| Convenience custom alphabet function that returns empty string on error
+///|
+/// Convenience custom alphabet function that returns empty string on error
 /// Usage: let gen = custom_alphabet_or_empty("abc123", size=8); let id = gen()
 pub fn custom_alphabet_or_empty(
   alphabet : String,
-  size~ : Int = DEFAULT_SIZE,
+  size? : Int = DEFAULT_SIZE,
 ) -> () -> String {
   match custom_alphabet(alphabet, size~) {
     Ok(gen) =>
@@ -790,7 +849,8 @@ pub fn custom_alphabet_or_empty(
   }
 }
 
-///| Custom random function - allows custom random generator
+///|
+/// Custom random function - allows custom random generator
 /// Creates a generator with custom alphabet, size, and random function
 /// Returns Result with generator function or NanoidError for invalid parameters
 /// Usage: let gen = custom_random(alphabet, size, random_fn)?; let id = gen()?
@@ -811,7 +871,8 @@ pub fn custom_random(
   }
 }
 
-///| Convenience custom random function that returns empty string on error
+///|
+/// Convenience custom random function that returns empty string on error
 /// Usage: let gen = custom_random_or_empty(alphabet, size, random_fn); let id = gen()
 pub fn custom_random_or_empty(
   alphabet : String,
@@ -836,55 +897,68 @@ pub fn custom_random_or_empty(
 // ========== Character Sets & Alphabet Presets ==========
 // Based on nanoid-dictionary (https://github.com/CyberAP/nanoid-dictionary)
 
-///| Numbers from 0 to 9
+///|
+/// Numbers from 0 to 9
 pub let numbers = "0123456789"
 
-///| Lowercase English letters
+///|
+/// Lowercase English letters
 pub let lowercase = "abcdefghijklmnopqrstuvwxyz"
 
-///| Uppercase English letters
+///|
+/// Uppercase English letters
 pub let uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-///| Combination of lowercase, uppercase letters and numbers
+///|
+/// Combination of lowercase, uppercase letters and numbers
 /// Does not include any symbols or special characters
 pub let alphanumeric = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
-///| Lowercase hexadecimal characters
+///|
+/// Lowercase hexadecimal characters
 pub let hex = "0123456789abcdef"
 
-///| Uppercase hexadecimal characters
+///|
+/// Uppercase hexadecimal characters
 pub let hex_upper = "0123456789ABCDEF"
 
-///| Numbers and English alphabet without lookalikes
+///|
+/// Numbers and English alphabet without lookalikes
 /// Removes: 1, l, I, 0, O, o, u, v, 5, S, s, 2, Z
 /// Complete set: 346789ABCDEFGHJKLMNPQRTUVWXYabcdefghijkmnpqrtwxyz
 pub let nolookalikes = "346789ABCDEFGHJKLMNPQRTUVWXYabcdefghijkmnpqrtwxyz"
 
-///| Same as nolookalikes but with additional removed characters: 3, 4, x, X, V
+///|
+/// Same as nolookalikes but with additional removed characters: 3, 4, x, X, V
 /// Also removes vowels to protect from accidentally getting obscene words in generated strings
 /// Complete set: 6789BCDFGHJKLMNPQRTWbcdfghjkmnpqrtwz
 pub let nolookalikes_safe = "6789BCDFGHJKLMNPQRTWbcdfghjkmnpqrtwz"
 
-///| Base62 encoding alphabet (numbers, uppercase, lowercase)
+///|
+/// Base62 encoding alphabet (numbers, uppercase, lowercase)
 /// Compatible with most base62 implementations
 pub let base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
-///| Base58 encoding alphabet (Bitcoin style - excludes 0, O, I, l)
+///|
+/// Base58 encoding alphabet (Bitcoin style - excludes 0, O, I, l)
 /// Used in cryptocurrency and other applications to avoid character confusion
 pub let base58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"
 
-///| URL-safe characters that don't require encoding in most contexts
+///|
+/// URL-safe characters that don't require encoding in most contexts
 /// Excludes characters that might be problematic in URLs or file systems
 /// Same as the default url_alphabet
 pub let url_safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
 
-///| Filename-safe characters for cross-platform compatibility
+///|
+/// Filename-safe characters for cross-platform compatibility
 /// Safe for use in filenames on Windows, macOS, and Linux
 pub let filename_safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
 
 // ========== Security Utilities ==========
 
-///| Secure ID verification using constant-time comparison
+///|
+/// Secure ID verification using constant-time comparison
 /// This prevents timing attacks when verifying IDs or tokens
 /// Usage: secure_verify_id(user_provided_id, expected_id)
 pub fn secure_verify_id(provided_id : String, expected_id : String) -> Bool {

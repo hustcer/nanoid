@@ -75,41 +75,41 @@ fn validate_alphabet(alphabet : String) -> ValidationResult {
 ///|
 /// Internal alphabet validation without caching
 fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
+  // Count actual characters using iterator (handles Unicode correctly)
+  let mut char_count = 0
+  for _char in alphabet {
+    char_count = char_count + 1
+  }
+
   // Check for empty alphabet
-  if alphabet.length() == 0 {
+  if char_count == 0 {
     return InvalidAlphabet(EmptyAlphabet)
   }
 
   // Check for oversized alphabet
-  if alphabet.length() > MAX_ALPHABET_SIZE {
-    return InvalidAlphabet(OversizedAlphabet(alphabet.length()))
+  if char_count > MAX_ALPHABET_SIZE {
+    return InvalidAlphabet(OversizedAlphabet(char_count))
   }
 
   // Use an immutable HashMap to efficiently check for duplicates and provide rich error messages.
   // The map stores the character and the index where it was first seen.
   let mut seen : @immut/hashmap.HashMap[Char, Int] = @immut/hashmap.new()
-  for i = 0; i < alphabet.length(); i = i + 1 {
-    match alphabet.get_char(i) {
-      Some(char) =>
-        match seen.get(char) {
-          Some(first_pos) =>
-            // Duplicate found, return a detailed error.
-            return InvalidAlphabet(
-              RandomGenerationError(
-                "Duplicate character '\{char}' found at position \{i}, first seen at \{first_pos}",
-              ),
-            )
-          None =>
-            // First time seeing this character, add it to the map with its index.
-            seen = seen.add(char, i)
-        }
-      None =>
+  let mut i = 0
+  // Use for-in loop to correctly iterate over Unicode characters (including emoji, etc.)
+  for char in alphabet {
+    match seen.get(char) {
+      Some(first_pos) =>
+        // Duplicate found, return a detailed error.
         return InvalidAlphabet(
           RandomGenerationError(
-            "Invalid character in alphabet at position \{i}",
+            "Duplicate character '\{char}' found at position \{i}, first seen at \{first_pos}",
           ),
         )
+      None =>
+        // First time seeing this character, add it to the map with its index.
+        seen = seen.add(char, i)
     }
+    i = i + 1
   }
   Valid
 }
@@ -174,22 +174,40 @@ fn validate_all_parameters(
 /// This is important for security-sensitive applications
 /// Usage: Use this when comparing sensitive strings like tokens or IDs
 pub fn constant_time_eq(a : String, b : String) -> Bool {
-  if a.length() != b.length() {
+  // Convert strings to character arrays for safe Unicode iteration
+  let chars_a = string_to_chars(a)
+  let chars_b = string_to_chars(b)
+
+  // Length check (this is not constant-time, but necessary for correctness)
+  if chars_a.length() != chars_b.length() {
     return false
   }
+
+  // Constant-time comparison of all characters
   let mut result = 0
-  for i = 0; i < a.length(); i = i + 1 {
-    let char_a = match a.get_char(i) {
-      Some(c) => c.to_int()
-      None => 0
-    }
-    let char_b = match b.get_char(i) {
-      Some(c) => c.to_int()
-      None => 0
-    }
-    result = result | (char_a ^ char_b)
+  for i = 0; i < chars_a.length(); i = i + 1 {
+    result = result | (chars_a[i].to_int() ^ chars_b[i].to_int())
   }
   result == 0
+}
+
+///|
+/// Helper function to convert string to character array using safe iteration
+fn string_to_chars(s : String) -> Array[Char] {
+  // First pass: count characters
+  let mut count = 0
+  for _char in s {
+    count = count + 1
+  }
+
+  // Second pass: fill array
+  let chars = Array::make(count, ' ')
+  let mut i = 0
+  for char in s {
+    chars[i] = char
+    i = i + 1
+  }
+  chars
 }
 
 ///|
@@ -406,12 +424,10 @@ pub fn SimpleRng::next_int(self : SimpleRng, limit : Int) -> Int {
 
 ///|
 /// Convert alphabet string to character array for efficient access
+/// Uses safe Unicode iteration to handle all characters correctly (including emoji, etc.)
 pub fn alphabet_to_chars(alphabet : String) -> Array[Char] {
-  let chars = Array::make(alphabet.length(), ' ')
-  for i = 0; i < alphabet.length(); i = i + 1 {
-    chars[i] = alphabet.get_char(i).unwrap()
-  }
-  chars
+  // Use the helper function for safe Unicode conversion
+  string_to_chars(alphabet)
 }
 
 ///|

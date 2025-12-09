@@ -194,7 +194,7 @@ pub fn constant_time_eq(a : String, b : String) -> Bool {
 /// Note: Requires two passes (count + fill) because MoonBit arrays need pre-allocated size.
 /// This is a necessary tradeoff for type safety and memory efficiency.
 /// For frequently used alphabets, consider using get_cached_alphabet_chars() to cache results.
-fn string_to_chars(s : String) -> Array[Char] {
+pub fn string_to_chars(s : String) -> Array[Char] {
   // First pass: count characters (handles Unicode correctly - emoji count as single characters)
   let mut count = 0
   for _char in s {
@@ -473,8 +473,11 @@ fn generate_id_characters(
   mask : Int,
   get_random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[String, NanoidError] {
-  let alphabet_length = alphabet.length()
-  let alphabet_chars = get_cached_alphabet_chars(alphabet) // Use cached conversion for efficiency
+  // Convert alphabet to character array once and get actual character count
+  // Critical for Unicode: alphabet.length() returns byte/code-unit count, not character count
+  let alphabet_chars = get_cached_alphabet_chars(alphabet)
+  let alphabet_length = alphabet_chars.length()
+
   let id_chars = Array::make(size, ' ')
   let mut counter = 0
   let mut batch_count = 0
@@ -788,11 +791,15 @@ fn generate(
     InvalidSize(error) => return Err(error)
     InvalidRandom(error) => return Err(error)
   }
-  let alphabet_length = alphabet.length()
+
+  // Convert alphabet to character array and get actual character count
+  // This is critical for Unicode handling - alphabet.length() returns byte/code-unit count
+  let alphabet_chars = get_cached_alphabet_chars(alphabet)
+  let alphabet_length = alphabet_chars.length()
 
   // Special case: single character alphabet - no randomness needed
   if alphabet_length == 1 {
-    let single_char = alphabet.get_char(0).unwrap()
+    let single_char = alphabet_chars[0]
     let chars = Array::make(size, single_char)
     return Ok(String::from_array(chars))
   }

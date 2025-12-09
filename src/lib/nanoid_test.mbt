@@ -501,3 +501,79 @@ test "insufficient_randomness_triggers_error" {
     }
   }
 }
+
+///|
+test "unicode_emoji_alphabet_support" {
+  // Test single emoji alphabet
+  let emoji_gen = custom_alphabet("😀", size=5)
+  assert_true(emoji_gen is Ok(_))
+  let id_emoji = emoji_gen.unwrap()()
+  assert_true(id_emoji is Ok(_))
+  let emoji_id = id_emoji.unwrap()
+  // Should generate 5 repetitions of the same emoji
+  assert_eq(string_to_chars(emoji_id).length(), 5)
+
+  // Test mixed emoji alphabet
+  let mixed_emoji_gen = custom_alphabet("😀😁😂", size=10)
+  assert_true(mixed_emoji_gen is Ok(_))
+  let id_mixed = mixed_emoji_gen.unwrap()()
+  assert_true(id_mixed is Ok(_))
+  let mixed_id = id_mixed.unwrap()
+  // Should generate 10 characters from the emoji set
+  assert_eq(string_to_chars(mixed_id).length(), 10)
+
+  // Test Chinese characters
+  let chinese_gen = custom_alphabet("你好世界", size=8)
+  assert_true(chinese_gen is Ok(_))
+  let id_chinese = chinese_gen.unwrap()()
+  assert_true(id_chinese is Ok(_))
+  let chinese_id = id_chinese.unwrap()
+  assert_eq(string_to_chars(chinese_id).length(), 8)
+
+  // Test mixed ASCII and Unicode
+  let mixed_gen = custom_alphabet("A😀B😁C", size=10)
+  assert_true(mixed_gen is Ok(_))
+  let id_mixed_ascii = mixed_gen.unwrap()()
+  assert_true(id_mixed_ascii is Ok(_))
+  let mixed_ascii_id = id_mixed_ascii.unwrap()
+  assert_eq(string_to_chars(mixed_ascii_id).length(), 10)
+
+  // Verify all characters in the generated ID are from the alphabet
+  let alphabet_chars = string_to_chars("A😀B😁C")
+  let id_chars = string_to_chars(mixed_ascii_id)
+  for i = 0; i < id_chars.length(); i = i + 1 {
+    let char = id_chars[i]
+    let mut found = false
+    for j = 0; j < alphabet_chars.length(); j = j + 1 {
+      if char == alphabet_chars[j] {
+        found = true
+      }
+    }
+    assert_true(found)
+  }
+}
+
+///|
+test "unicode_constant_time_comparison" {
+  // Test constant-time comparison with emoji
+  let id1 = "😀😁😂"
+  let id2 = "😀😁😂"
+  let id3 = "😀😁😃"
+
+  assert_true(constant_time_eq(id1, id2))
+  assert_false(constant_time_eq(id1, id3))
+
+  // Test with mixed Unicode
+  let mixed1 = "你好😀世界"
+  let mixed2 = "你好😀世界"
+  let mixed3 = "你好😁世界"
+
+  assert_true(constant_time_eq(mixed1, mixed2))
+  assert_false(constant_time_eq(mixed1, mixed3))
+
+  // Test empty strings
+  assert_true(constant_time_eq("", ""))
+
+  // Test different lengths
+  assert_false(constant_time_eq("😀", "😀😀"))
+}

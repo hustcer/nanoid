@@ -74,14 +74,32 @@ fn validate_alphabet(alphabet : String) -> ValidationResult {
 
 ///|
 /// Internal alphabet validation without caching
+/// Optimized to perform validation in a single pass through the string
 fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
-  // Count actual characters using iterator (handles Unicode correctly)
+  // Use an immutable HashMap to efficiently check for duplicates and provide rich error messages.
+  // The map stores the character and the index where it was first seen.
+  let mut seen : @immut/hashmap.HashMap[Char, Int] = @immut/hashmap.new()
   let mut char_count = 0
-  for _char in alphabet {
+
+  // Single pass: count characters and check for duplicates simultaneously
+  // Use for-in loop to correctly iterate over Unicode characters (including emoji, etc.)
+  for char in alphabet {
+    match seen.get(char) {
+      Some(first_pos) =>
+        // Duplicate found, return a detailed error.
+        return InvalidAlphabet(
+          RandomGenerationError(
+            "Duplicate character '\{char}' found at position \{char_count}, first seen at \{first_pos}",
+          ),
+        )
+      None =>
+        // First time seeing this character, add it to the map with its index.
+        seen = seen.add(char, char_count)
+    }
     char_count = char_count + 1
   }
 
-  // Check for empty alphabet
+  // Check for empty alphabet (after loop to maintain single pass)
   if char_count == 0 {
     return InvalidAlphabet(EmptyAlphabet)
   }
@@ -91,26 +109,6 @@ fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
     return InvalidAlphabet(OversizedAlphabet(char_count))
   }
 
-  // Use an immutable HashMap to efficiently check for duplicates and provide rich error messages.
-  // The map stores the character and the index where it was first seen.
-  let mut seen : @immut/hashmap.HashMap[Char, Int] = @immut/hashmap.new()
-  let mut i = 0
-  // Use for-in loop to correctly iterate over Unicode characters (including emoji, etc.)
-  for char in alphabet {
-    match seen.get(char) {
-      Some(first_pos) =>
-        // Duplicate found, return a detailed error.
-        return InvalidAlphabet(
-          RandomGenerationError(
-            "Duplicate character '\{char}' found at position \{i}, first seen at \{first_pos}",
-          ),
-        )
-      None =>
-        // First time seeing this character, add it to the map with its index.
-        seen = seen.add(char, i)
-    }
-    i = i + 1
-  }
   Valid
 }
 
@@ -193,14 +191,17 @@ pub fn constant_time_eq(a : String, b : String) -> Bool {
 
 ///|
 /// Helper function to convert string to character array using safe iteration
+/// Note: Requires two passes (count + fill) because MoonBit arrays need pre-allocated size.
+/// This is a necessary tradeoff for type safety and memory efficiency.
+/// For frequently used alphabets, consider using get_cached_alphabet_chars() to cache results.
 fn string_to_chars(s : String) -> Array[Char] {
-  // First pass: count characters
+  // First pass: count characters (handles Unicode correctly - emoji count as single characters)
   let mut count = 0
   for _char in s {
     count = count + 1
   }
 
-  // Second pass: fill array
+  // Second pass: fill array with characters
   let chars = Array::make(count, ' ')
   let mut i = 0
   for char in s {

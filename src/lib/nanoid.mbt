@@ -520,10 +520,11 @@ fn generate_id_characters(
 
   // Handle insufficient randomness case by returning an error
   if counter < size {
-    match handle_insufficient_randomness(batch_count) {
-      Ok(_) => () // Should not happen, but handles the Result type
-      Err(e) => return Err(e)
-    }
+    return error_result(
+      RandomGenerationError(
+        "Failed to generate sufficient random characters after \{batch_count} batches. This may indicate an issue with the random number generator.",
+      ),
+    )
   }
   Ok(String::from_array(id_chars))
 }

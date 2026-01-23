@@ -1,3 +1,18 @@
+## v0.2.3
+
+**🐛 Bug Fixes:**
+
+- **Fixed Int64 Overflow**: Resolved a potential `Int64.MIN_VALUE` overflow issue in `SimpleRng::next_int` to ensure safe absolute value conversion
+- **Fixed Dependencies**: Removed invalid dependencies to ensure a clean build environment
+- **Fixed Import Warnings**: Resolved compiler warnings related to imports
+
+**✨ Improvements:**
+
+- **Enhanced Seed Generation**: Simplified `increment_counter` and improved seed generation by mixing multiple entropy sources (old and new counter values, cross-correlation)
+- **Improved Validation**: Added specific `DuplicateCharacter` error type for better debugging of invalid alphabets
+- **Refactored Counter Logic**: Simplified global counter increment logic to be more transparent about threading assumptions
+- **Enhanced Constant-Time Comparison**: Further improvements to the security of `constant_time_eq`
+
 ## v0.2.2
 
 **🐛 Bug Fixes:**

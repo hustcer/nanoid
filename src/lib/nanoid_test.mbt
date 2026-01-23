@@ -559,7 +559,6 @@ test "unicode_constant_time_comparison" {
   let id1 = "😀😁😂"
   let id2 = "😀😁😂"
   let id3 = "😀😁😃"
-
   assert_true(constant_time_eq(id1, id2))
   assert_false(constant_time_eq(id1, id3))
 
@@ -567,7 +566,6 @@ test "unicode_constant_time_comparison" {
   let mixed1 = "你好😀世界"
   let mixed2 = "你好😀世界"
   let mixed3 = "你好😁世界"
-
   assert_true(constant_time_eq(mixed1, mixed2))
   assert_false(constant_time_eq(mixed1, mixed3))
 
@@ -576,4 +574,182 @@ test "unicode_constant_time_comparison" {
 
   // Test different lengths
   assert_false(constant_time_eq("😀", "😀😀"))
+}
+
+///|
+test "duplicate_character_in_alphabet" {
+  // Test that duplicate ASCII characters are rejected
+  let result = custom_alphabet("ABCA", size=5)
+  assert_true(result is Err(_))
+  match result {
+    Err(error) => {
+      let msg = error.to_string()
+      assert_true(msg.contains("Duplicate character"))
+      assert_true(msg.contains("'A'"))
+    }
+    Ok(_) => assert_true(false)
+  }
+
+  // Test that duplicate Unicode characters are rejected
+  let emoji_result = custom_alphabet("😀😁😀", size=5)
+  assert_true(emoji_result is Err(_))
+  match emoji_result {
+    Err(error) => {
+      let msg = error.to_string()
+      assert_true(msg.contains("Duplicate character"))
+    }
+    Ok(_) => assert_true(false)
+  }
+
+  // Test detailed error message
+  let result2 = custom_alphabet("XYZXY", size=5)
+  match result2 {
+    Err(error) => {
+      let detailed = error.to_string_detailed()
+      assert_true(detailed.contains("must be unique"))
+    }
+    Ok(_) => assert_true(false)
+  }
+}
+
+///|
+test "duplicate_character_error_type" {
+  // Verify the error type is DuplicateCharacter, not RandomGenerationError
+  let result = custom_alphabet("ABBA", size=5)
+  match result {
+    Err(NanoidError::DuplicateCharacter(char, first_pos, dup_pos)) => {
+      assert_eq(char, 'B')
+      assert_eq(first_pos, 1)
+      assert_eq(dup_pos, 2)
+    }
+    Err(_) => assert_true(false) // Wrong error type
+    Ok(_) => assert_true(false) // Should not succeed
+  }
+}
+
+///|
+test "clear_alphabet_cache" {
+  // Use the cache
+  let _ = get_cached_alphabet_chars("TEST123")
+  let _ = get_cached_alphabet_chars("ANOTHER")
+
+  // Clear the cache
+  clear_alphabet_cache()
+
+  // After clearing, cache should work again
+  let chars = get_cached_alphabet_chars("NEW")
+  assert_eq(chars.length(), 3)
+  assert_eq(chars[0], 'N')
+  assert_eq(chars[1], 'E')
+  assert_eq(chars[2], 'W')
+}
+
+///|
+test "increment_counter_works" {
+  // Test the renamed function
+  let initial = global_call_count.val
+  let new_val = increment_counter()
+  assert_true(new_val > initial)
+
+  // Test backward compatibility alias
+  let new_val2 = atomic_increment_counter()
+  assert_true(new_val2 > new_val)
+}
+
+///|
+test "constant_time_eq_no_early_return" {
+  // Test that constant_time_eq handles different lengths correctly
+  // without early return (for better timing attack resistance)
+  assert_false(constant_time_eq("short", "longer_string"))
+  assert_false(constant_time_eq("longer_string", "short"))
+  assert_false(constant_time_eq("a", ""))
+  assert_false(constant_time_eq("", "b"))
+
+  // Same length, different content
+  assert_false(constant_time_eq("aaaa", "aaab"))
+  assert_false(constant_time_eq("aaaa", "baaa"))
+
+  // Equal strings
+  assert_true(constant_time_eq("test", "test"))
+  assert_true(constant_time_eq("", ""))
+}
+
+///|
+test "error_type_coverage" {
+  // Test all error types have proper string representations by triggering actual errors
+
+  // EmptyAlphabet
+  match custom_alphabet("", size=5) {
+    Err(error) => {
+      assert_true(error.to_string().contains("empty"))
+      assert_true(error.to_string_detailed().contains("at least one"))
+    }
+    Ok(_) => assert_true(false)
+  }
+
+  // DuplicateCharacter
+  match custom_alphabet("ABCA", size=5) {
+    Err(error) => {
+      assert_true(error.to_string().contains("Duplicate"))
+      assert_true(error.to_string_detailed().contains("unique"))
+    }
+    Ok(_) => assert_true(false)
+  }
+
+  // SizeTooSmall (negative)
+  match nanoid(size=-5) {
+    Err(error) => assert_true(error.to_string_detailed().contains("negative"))
+    Ok(_) => assert_true(false)
+  }
+
+  // SizeTooSmall (zero)
+  match nanoid(size=0) {
+    Err(error) => assert_true(error.to_string_detailed().contains("size=1"))
+    Ok(_) => assert_true(false)
+  }
+
+  // SizeTooLarge
+  match nanoid(size=1000001) {
+    Err(error) => {
+      assert_true(error.to_string().contains("1000001"))
+      assert_true(error.to_string_detailed().contains("memory"))
+    }
+    Ok(_) => assert_true(false)
+  }
+}
+
+///|
+test "unicode_alphabet_iteration_consistency" {
+  // Ensure Unicode handling is consistent across the codebase
+  let alphabet = "A😀B😁C"
+  let alphabet_chars = string_to_chars(alphabet)
+
+  // Should have 5 characters, not byte count
+  assert_eq(alphabet_chars.length(), 5)
+  assert_eq(alphabet_chars[0], 'A')
+  assert_eq(alphabet_chars[1], '😀')
+  assert_eq(alphabet_chars[2], 'B')
+  assert_eq(alphabet_chars[3], '😁')
+  assert_eq(alphabet_chars[4], 'C')
+
+  // Generate ID and verify using consistent iteration
+  let gen = custom_alphabet(alphabet, size=10)
+  assert_true(gen is Ok(_))
+  let id = gen.unwrap()().unwrap()
+
+  // Verify length using character count
+  let id_chars = string_to_chars(id)
+  assert_eq(id_chars.length(), 10)
+
+  // Verify all characters are from alphabet
+  for i = 0; i < id_chars.length(); i = i + 1 {
+    let char = id_chars[i]
+    let mut found = false
+    for j = 0; j < alphabet_chars.length(); j = j + 1 {
+      if char == alphabet_chars[j] {
+        found = true
+      }
+    }
+    assert_true(found)
+  }
 }

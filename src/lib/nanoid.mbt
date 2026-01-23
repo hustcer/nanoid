@@ -9,6 +9,7 @@
 pub enum NanoidError {
   EmptyAlphabet
   OversizedAlphabet(Int) // Contains the actual length
+  DuplicateCharacter(Char, Int, Int) // Contains (char, first_position, duplicate_position)
   SizeTooSmall(Int) // Contains the invalid size value (<= 0)
   SizeTooLarge(Int) // Contains the invalid size value (> MAX_ID_SIZE)
   RandomGenerationError(String)
@@ -21,6 +22,8 @@ pub fn NanoidError::to_string(self : NanoidError) -> String {
     EmptyAlphabet => "Alphabet cannot be empty"
     OversizedAlphabet(len) =>
       "Alphabet length (\{len}) exceeds maximum of 256 characters"
+    DuplicateCharacter(char, first_pos, dup_pos) =>
+      "Duplicate character '\{char}' at position \{dup_pos}, first seen at \{first_pos}"
     SizeTooSmall(size) => "Size (\{size}) must be greater than 0"
     SizeTooLarge(size) =>
       "Size (\{size}) exceeds maximum allowed size of 1,000,000"
@@ -36,6 +39,8 @@ pub fn NanoidError::to_string_detailed(self : NanoidError) -> String {
       "Alphabet cannot be empty. Please provide at least one character."
     OversizedAlphabet(len) =>
       "Alphabet length (\{len}) exceeds maximum of 256 characters. Consider using a smaller character set."
+    DuplicateCharacter(char, first_pos, dup_pos) =>
+      "Duplicate character '\{char}' found at position \{dup_pos}, first seen at \{first_pos}. Each character in the alphabet must be unique."
     SizeTooSmall(size) =>
       if size < 0 {
         "Size (\{size}) cannot be negative. Please provide a positive integer."
@@ -86,12 +91,8 @@ fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
   for char in alphabet {
     match seen.get(char) {
       Some(first_pos) =>
-        // Duplicate found, return a detailed error.
-        return InvalidAlphabet(
-          RandomGenerationError(
-            "Duplicate character '\{char}' found at position \{char_count}, first seen at \{first_pos}",
-          ),
-        )
+        // Duplicate found, return a detailed error with proper error type.
+        return InvalidAlphabet(DuplicateCharacter(char, first_pos, char_count))
       None =>
         // First time seeing this character, add it to the map with its index.
         seen = seen.add(char, char_count)
@@ -108,7 +109,6 @@ fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
   if char_count > MAX_ALPHABET_SIZE {
     return InvalidAlphabet(OversizedAlphabet(char_count))
   }
-
   Valid
 }
 
@@ -171,20 +171,25 @@ fn validate_all_parameters(
 /// Constant-time string comparison to prevent timing attacks
 /// This is important for security-sensitive applications
 /// Usage: Use this when comparing sensitive strings like tokens or IDs
+/// Note: Length difference is incorporated into result without early return
+/// to minimize timing side-channel leakage
 pub fn constant_time_eq(a : String, b : String) -> Bool {
   // Convert strings to character arrays for safe Unicode iteration
   let chars_a = string_to_chars(a)
   let chars_b = string_to_chars(b)
+  let len_a = chars_a.length()
+  let len_b = chars_b.length()
 
-  // Length check (this is not constant-time, but necessary for correctness)
-  if chars_a.length() != chars_b.length() {
-    return false
-  }
+  // Include length difference in result (non-zero if different)
+  let mut result = len_a ^ len_b
 
-  // Constant-time comparison of all characters
-  let mut result = 0
-  for i = 0; i < chars_a.length(); i = i + 1 {
-    result = result | (chars_a[i].to_int() ^ chars_b[i].to_int())
+  // Compare up to the length of the longer string
+  // This ensures constant-time regardless of where strings differ
+  let max_len = if len_a > len_b { len_a } else { len_b }
+  for i = 0; i < max_len; i = i + 1 {
+    let c_a = if i < len_a { chars_a[i].to_int() } else { 0 }
+    let c_b = if i < len_b { chars_b[i].to_int() } else { 0 }
+    result = result | (c_a ^ c_b)
   }
   result == 0
 }
@@ -318,8 +323,10 @@ pub struct SimpleRng {
 pub let global_call_count : Ref[Int] = { val: 0 }
 
 ///|
-/// Thread-safe increment of global counter (simulated atomic operation)
-pub fn atomic_increment_counter() -> Int {
+/// Increment global counter (non-atomic, not thread-safe)
+/// Note: In a multi-threaded environment, this should use atomic compare-and-swap.
+/// The current implementation uses a simple retry mechanism that may have race conditions.
+pub fn increment_counter() -> Int {
   // In a real implementation, this should use atomic compare-and-swap
   // For now, we simulate thread safety with multiple reads to detect changes
   let mut old_val = global_call_count.val
@@ -343,6 +350,13 @@ pub fn atomic_increment_counter() -> Int {
   // Fallback: just increment (may have race condition but better than nothing)
   global_call_count.val = global_call_count.val + 1
   global_call_count.val
+}
+
+///|
+/// Backward compatibility alias for increment_counter
+/// @deprecated Use increment_counter instead
+pub fn atomic_increment_counter() -> Int {
+  increment_counter()
 }
 
 // ========== Alphabet Validation Cache ==========
@@ -477,7 +491,6 @@ fn generate_id_characters(
   // Critical for Unicode: alphabet.length() returns byte/code-unit count, not character count
   let alphabet_chars = get_cached_alphabet_chars(alphabet)
   let alphabet_length = alphabet_chars.length()
-
   let id_chars = Array::make(size, ' ')
   let mut counter = 0
   let mut batch_count = 0
@@ -552,29 +565,20 @@ fn handle_insufficient_randomness(
   )
 }
 
-///| Heuristic fast-path for optimal batch size when rejection probability is zero.
-
-///| Returns Some(step) only when (mask + 1) == alphabet_length (i.e. power-of-two alphabet)
-
-///| so every generated random byte can map to a character without rejection.
-
-///| Strategy:
-
-///|   - Use target_size directly (1 batch ideal) to minimize RNG + loop overhead.
-
-///|   - Clamp to [MIN_BATCH_SIZE, MAX_BATCH_SIZE] to avoid pathological tiny/huge requests.
-
-///|   - Otherwise return None and let the analytical path compute a value.
-
-///| Rationale:
-
-///|   Previous implementation hard-coded opaque magic numbers (e.g. 64->10) which caused
-
-///|   unnecessary multiple batches, increasing RNG calls and memory clearing. This version
-
-///|   keeps semantics minimal while enabling single-batch generation for common alphabets
-
 ///|
+/// Heuristic fast-path for optimal batch size when rejection probability is zero.
+/// Returns Some(step) only when (mask + 1) == alphabet_length (i.e. power-of-two alphabet)
+/// so every generated random byte can map to a character without rejection.
+///
+/// Strategy:
+///   - Use target_size directly (1 batch ideal) to minimize RNG + loop overhead.
+///   - Clamp to [MIN_BATCH_SIZE, MAX_BATCH_SIZE] to avoid pathological tiny/huge requests.
+///   - Otherwise return None and let the analytical path compute a value.
+///
+/// Rationale:
+///   Previous implementation hard-coded opaque magic numbers (e.g. 64->10) which caused
+///   unnecessary multiple batches, increasing RNG calls and memory clearing. This version
+///   keeps semantics minimal while enabling single-batch generation for common alphabets
 ///   like 64 (URL/base64) and 32 (base32) when size is within limits.
 pub fn get_precomputed_batch_size(
   alphabet_length : Int,
@@ -731,6 +735,13 @@ const MAX_ALPHABET_CACHE_SIZE = 16
 /// Note: This is a basic implementation. In production, consider using a proper LRU cache
 let alphabet_char_cache : Ref[@immut/hashmap.HashMap[String, Array[Char]]] = {
   val: @immut/hashmap.new(),
+}
+
+///|
+/// Clear the alphabet character cache
+/// Useful when memory needs to be freed or when testing
+pub fn clear_alphabet_cache() -> Unit {
+  alphabet_char_cache.val = @immut/hashmap.new()
 }
 
 ///|

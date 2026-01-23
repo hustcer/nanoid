@@ -646,12 +646,12 @@ test "clear_alphabet_cache" {
 
 ///|
 test "increment_counter_works" {
-  // Test the renamed function
+  // Test the renamed function - now returns (old_value, new_value) tuple
   let initial = global_call_count.val
-  let new_val = increment_counter()
+  let (_old_val, new_val) = increment_counter()
   assert_true(new_val > initial)
 
-  // Test backward compatibility alias
+  // Test backward compatibility alias - returns only new value
   let new_val2 = atomic_increment_counter()
   assert_true(new_val2 > new_val)
 }

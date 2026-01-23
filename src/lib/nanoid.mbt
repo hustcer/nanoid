@@ -556,20 +556,7 @@ fn process_random_batch_optimized(
 
 // Legacy function removed - now using optimized version directly
 
-///|
-/// Handle the case where insufficient random characters were generated (optimized)
-fn handle_insufficient_randomness(
-  batch_count : Int,
-) -> Result[Unit, NanoidError] {
-  // This function is called when not enough characters were generated.
-  // Instead of falling back to a deterministic pattern, we will always
-  // return an error to enforce security and correctness ("fail-fast").
-  return error_result(
-    RandomGenerationError(
-      "Failed to generate sufficient random characters after \{batch_count} batches. This may indicate an issue with the random number generator.",
-    ),
-  )
-}
+
 
 ///|
 /// Heuristic fast-path for optimal batch size when rejection probability is zero.

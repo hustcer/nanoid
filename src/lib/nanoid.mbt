@@ -390,6 +390,20 @@ pub fn SimpleRng::next_int64(self : SimpleRng) -> Int64 {
 }
 
 ///|
+/// Safe absolute value for Int64 that handles MIN_VALUE overflow
+/// When value == Int64.MIN_VALUE (-9223372036854775808), -value would overflow
+/// to the same negative value. We map it to MAX_VALUE instead.
+fn safe_abs_int64(value : Int64) -> Int64 {
+  if value == -9223372036854775808L {
+    9223372036854775807L // Int64.MAX_VALUE
+  } else if value < 0L {
+    -value
+  } else {
+    value
+  }
+}
+
+///|
 /// Generate a random integer in range [0, limit) with uniform distribution
 pub fn SimpleRng::next_int(self : SimpleRng, limit : Int) -> Int {
   if limit <= 0 {
@@ -402,8 +416,7 @@ pub fn SimpleRng::next_int(self : SimpleRng, limit : Int) -> Int {
   // For small limits, use simple approach to avoid complexity
   if limit <= 256 {
     let rand = self.next_int64()
-    // Use absolute value properly to handle negative numbers
-    let abs_rand = if rand < 0L { -rand } else { rand }
+    let abs_rand = safe_abs_int64(rand)
     return (abs_rand % limit.to_int64()).to_int()
   }
 
@@ -414,7 +427,7 @@ pub fn SimpleRng::next_int(self : SimpleRng, limit : Int) -> Int {
   let max_attempts = MAX_REJECTION_ATTEMPTS // Prevent infinite loops
   while attempts < max_attempts {
     let rand = self.next_int64()
-    let abs_rand = if rand < 0L { -rand } else { rand }
+    let abs_rand = safe_abs_int64(rand)
     if abs_rand < max_valid {
       return (abs_rand % limit_64).to_int()
     }
@@ -423,7 +436,7 @@ pub fn SimpleRng::next_int(self : SimpleRng, limit : Int) -> Int {
 
   // Fallback: use simple modulo if rejection sampling fails
   let rand = self.next_int64()
-  let abs_rand = if rand < 0L { -rand } else { rand }
+  let abs_rand = safe_abs_int64(rand)
   (abs_rand % limit_64).to_int()
 }
 

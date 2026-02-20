@@ -1,8 +1,0 @@
-{
-  "import": [
-    {"path": "moonbitlang/core/immut/hashmap", "alias": "immut/hashmap"}
-  ],
-  "deps": {
-    "moonbitlang/core": "*"
-  }
-}

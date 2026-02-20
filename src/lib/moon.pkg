@@ -1,0 +1,7 @@
+import {
+  "moonbitlang/core/immut/hashmap" @immut/hashmap,
+}
+
+options(
+  deps: { "moonbitlang/core": "*" },
+)

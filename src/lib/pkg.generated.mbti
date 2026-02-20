@@ -2,71 +2,77 @@
 package "hustcer/nanoid/lib"
 
 // Values
-fn alphabet_to_chars(String) -> Array[Char]
+pub fn alphabet_to_chars(String) -> Array[Char]
 
-let alphanumeric : String
+pub let alphanumeric : String
 
-fn atomic_increment_counter() -> Int
+pub fn atomic_increment_counter() -> Int
 
-let base58 : String
+pub let base58 : String
 
-let base62 : String
+pub let base62 : String
 
-fn calculate_entropy_efficiency(Int, Int) -> Double
+pub fn calculate_entropy_efficiency(Int, Int) -> Double
 
-fn calculate_mask(Int) -> Int
+pub fn calculate_mask(Int) -> Int
 
-fn calculate_waste_factor(Int, Int) -> Double
+pub fn calculate_waste_factor(Int, Int) -> Double
 
-fn constant_time_eq(String, String) -> Bool
+pub fn clear_alphabet_cache() -> Unit
 
-fn count_set_bits(Int64) -> Int
+pub fn constant_time_eq(String, String) -> Bool
 
-fn custom_alphabet(String, size? : Int) -> Result[() -> Result[String, NanoidError], NanoidError]
+pub fn count_set_bits(Int64) -> Int
 
-fn custom_alphabet_or_empty(String, size? : Int) -> () -> String
+pub fn custom_alphabet(String, size? : Int) -> Result[() -> Result[String, NanoidError], NanoidError]
 
-fn custom_random(String, Int, (Int) -> Result[Array[Int], NanoidError]) -> Result[() -> Result[String, NanoidError], NanoidError]
+pub fn custom_alphabet_or_empty(String, size? : Int) -> () -> String
 
-fn custom_random_or_empty(String, Int, (Int) -> Array[Int]) -> () -> String
+pub fn custom_random(String, Int, (Int) -> Result[Array[Int], NanoidError]) -> Result[() -> Result[String, NanoidError], NanoidError]
 
-let filename_safe : String
+pub fn custom_random_or_empty(String, Int, (Int) -> Array[Int]) -> () -> String
 
-fn get_batch_size_recommendation(Int, Int, Int) -> Int
+pub let filename_safe : String
 
-fn get_cached_alphabet_chars(String) -> Array[Char]
+pub fn get_batch_size_recommendation(Int, Int, Int) -> Int
 
-fn get_precomputed_batch_size(Int, Int, Int) -> Int?
+pub fn get_cached_alphabet_chars(String) -> Array[Char]
 
-fn get_precomputed_mask(Int) -> Int?
+pub fn get_precomputed_batch_size(Int, Int, Int) -> Int?
 
-let global_call_count : Ref[Int]
+pub fn get_precomputed_mask(Int) -> Int?
 
-let hex : String
+pub let global_call_count : Ref[Int]
 
-let hex_upper : String
+pub let hex : String
 
-let lowercase : String
+pub let hex_upper : String
 
-fn nanoid(size? : Int) -> Result[String, NanoidError]
+pub fn increment_counter() -> (Int, Int)
 
-fn nanoid_or_empty(size? : Int) -> String
+pub let lowercase : String
 
-let nolookalikes : String
+pub fn nanoid(size? : Int) -> Result[String, NanoidError]
 
-let nolookalikes_safe : String
+pub fn nanoid_or_empty(size? : Int) -> String
 
-let numbers : String
+pub let nolookalikes : String
 
-fn secure_clear_bytes(Array[Int]) -> Unit
+pub let nolookalikes_safe : String
 
-fn secure_verify_id(String, String) -> Bool
+pub let numbers : String
 
-let uppercase : String
+pub fn secure_clear_bytes(Array[Int]) -> Unit
 
-let url_alphabet : String
+pub fn secure_verify_id(String, String) -> Bool
 
-let url_safe : String
+pub fn string_to_chars(String) -> Array[Char]
+
+pub let uppercase : String
+
+pub let url_alphabet : String
+
+pub let url_safe : String
 
 // Errors
 
@@ -74,19 +80,20 @@ let url_safe : String
 pub enum NanoidError {
   EmptyAlphabet
   OversizedAlphabet(Int)
+  DuplicateCharacter(Char, Int, Int)
   SizeTooSmall(Int)
   SizeTooLarge(Int)
   RandomGenerationError(String)
 }
-fn NanoidError::to_string(Self) -> String
-fn NanoidError::to_string_detailed(Self) -> String
+pub fn NanoidError::to_string(Self) -> String
+pub fn NanoidError::to_string_detailed(Self) -> String
 
 pub struct SimpleRng {
   mut state : Int64
 }
-fn SimpleRng::new(Int64) -> Self
-fn SimpleRng::next_int(Self, Int) -> Int
-fn SimpleRng::next_int64(Self) -> Int64
+pub fn SimpleRng::new(Int64) -> Self
+pub fn SimpleRng::next_int(Self, Int) -> Int
+pub fn SimpleRng::next_int64(Self) -> Int64
 
 // Type aliases
 

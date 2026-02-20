@@ -556,8 +556,6 @@ fn process_random_batch_optimized(
 
 // Legacy function removed - now using optimized version directly
 
-
-
 ///|
 /// Heuristic fast-path for optimal batch size when rejection probability is zero.
 /// Returns Some(step) only when (mask + 1) == alphabet_length (i.e. power-of-two alphabet)

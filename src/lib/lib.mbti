@@ -24,8 +24,6 @@ fn get_cached_alphabet_chars(String) -> Array[Char]
 
 fn get_precomputed_batch_size(Int, Int, Int) -> Int?
 
-fn get_precomputed_mask(Int) -> Int?
-
 let hex : String
 
 let hex_upper : String

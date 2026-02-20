@@ -195,36 +195,13 @@ const MAX_BATCH_SIZE = 256
 let global_rng : @random.Rand = @random.Rand::chacha8()
 
 ///|
-/// Get precomputed mask for common alphabet sizes
-fn get_precomputed_mask(alphabet_length : Int) -> Int? {
-  match alphabet_length {
-    2 => Some(1) // 2^1 - 1
-    4 => Some(3) // 2^2 - 1
-    8 => Some(7) // 2^3 - 1
-    16 => Some(15) // 2^4 - 1
-    32 => Some(31) // 2^5 - 1
-    64 => Some(63) // 2^6 - 1
-    128 => Some(127) // 2^7 - 1
-    256 => Some(255) // 2^8 - 1
-    _ => None
-  }
-}
-
-///|
 /// Calculate mask for uniform distribution (power of 2 - 1)
-/// Uses precomputed values for common sizes, falls back to calculation for others
 fn calculate_mask(alphabet_length : Int) -> Int {
-  match get_precomputed_mask(alphabet_length) {
-    Some(mask) => mask
-    None => {
-      // Fallback to calculation for uncommon sizes
-      let mut mask = 1
-      while mask < alphabet_length {
-        mask = mask << 1
-      }
-      mask - 1
-    }
+  let mut mask = 1
+  while mask < alphabet_length {
+    mask = mask << 1
   }
+  mask - 1
 }
 
 ///|

@@ -22,8 +22,6 @@ pub fn clear_alphabet_cache() -> Unit
 
 pub fn constant_time_eq(String, String) -> Bool
 
-pub fn count_set_bits(Int64) -> Int
-
 pub fn custom_alphabet(String, size? : Int) -> Result[() -> Result[String, NanoidError], NanoidError]
 
 pub fn custom_alphabet_or_empty(String, size? : Int) -> () -> String
@@ -87,13 +85,6 @@ pub enum NanoidError {
 }
 pub fn NanoidError::to_string(Self) -> String
 pub fn NanoidError::to_string_detailed(Self) -> String
-
-pub struct SimpleRng {
-  mut state : Int64
-}
-pub fn SimpleRng::new(Int64) -> Self
-pub fn SimpleRng::next_int(Self, Int) -> Int
-pub fn SimpleRng::next_int64(Self) -> Int64
 
 // Type aliases
 

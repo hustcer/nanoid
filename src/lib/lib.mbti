@@ -18,9 +18,9 @@ fn calculate_mask(Int) -> Int
 
 fn calculate_waste_factor(Int, Int) -> Double
 
-fn constant_time_eq(String, String) -> Bool
+fn clear_alphabet_cache() -> Unit
 
-fn count_set_bits(Int64) -> Int
+fn constant_time_eq(String, String) -> Bool
 
 fn custom_alphabet(String, size? : Int) -> Result[() -> Result[String, NanoidError], NanoidError]
 
@@ -46,6 +46,8 @@ let hex : String
 
 let hex_upper : String
 
+fn increment_counter() -> (Int, Int)
+
 let lowercase : String
 
 fn nanoid(size? : Int) -> Result[String, NanoidError]
@@ -62,6 +64,8 @@ fn secure_clear_bytes(Array[Int]) -> Unit
 
 fn secure_verify_id(String, String) -> Bool
 
+fn string_to_chars(String) -> Array[Char]
+
 let uppercase : String
 
 let url_alphabet : String
@@ -74,19 +78,13 @@ let url_safe : String
 pub enum NanoidError {
   EmptyAlphabet
   OversizedAlphabet(Int)
+  DuplicateCharacter(Char, Int, Int)
   SizeTooSmall(Int)
   SizeTooLarge(Int)
   RandomGenerationError(String)
 }
 fn NanoidError::to_string(Self) -> String
 fn NanoidError::to_string_detailed(Self) -> String
-
-pub struct SimpleRng {
-  mut state : Int64
-}
-fn SimpleRng::new(Int64) -> Self
-fn SimpleRng::next_int(Self, Int) -> Int
-fn SimpleRng::next_int64(Self) -> Int64
 
 // Type aliases
 

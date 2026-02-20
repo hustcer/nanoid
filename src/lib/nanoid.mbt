@@ -259,10 +259,6 @@ const MAX_ID_SIZE = 1000000
 const BATCH_GENERATION_SAFETY_FACTOR = 3
 
 ///|
-/// Maximum attempts for rejection sampling to prevent infinite loops
-const MAX_REJECTION_ATTEMPTS = 100
-
-///|
 /// Minimum batch size for random byte generation
 const MIN_BATCH_SIZE = 8
 
@@ -270,70 +266,19 @@ const MIN_BATCH_SIZE = 8
 /// Maximum batch size for random byte generation
 const MAX_BATCH_SIZE = 256
 
-// ========== Xorshift64* Algorithm Constants ==========
-
-///|
-/// Xorshift64* multiplier constant for final mixing
-const XORSHIFT_MULTIPLIER = 0x2545F4914F6CDD1DL
-
-///|
-/// SplitMix64 golden ratio constant
-const SPLITMIX_GOLDEN_RATIO = 0x9E3779B97F4A7C15L
-
-///|
-/// SplitMix64 first multiplier
-const SPLITMIX_MULT1 = 0xBF58476D1CE4E5B9L
-
-///|
-/// SplitMix64 second multiplier
-const SPLITMIX_MULT2 = 0x94D049BB133111EBL
-
-///|
-/// SplitMix64 third multiplier
-const SPLITMIX_MULT3 = 0xFF51AFD7ED558CCDL
-
-///|
-/// SplitMix64 fourth multiplier
-const SPLITMIX_MULT4 = 0xC4CEB9FE1A85EC53L
-
-///|
-/// Additional entropy mixing constants
-const ENTROPY_MIX1 = 0x517CC1B727220A95L
-
-///|
-/// Second entropy mixing constant for cross-correlation prevention
-const ENTROPY_MIX2 = 0x94D049BB133111EBL
-
-///|
-/// Maximum safe value for rejection sampling (2^63 - 1)
-const MAX_SAFE_INT64 = 0x7FFFFFFFFFFFFFFFL
-
 // ========== Random Number Generation ==========
 
 ///|
-/// High-quality random number generator for nanoid
-/// Uses xorshift algorithm for better randomness distribution
-pub struct SimpleRng {
-  mut state : Int64
-}
-
-///|
-/// Global counter to provide entropy for seed generation
-/// WARNING: This counter is NOT thread-safe. In multi-threaded environments,
-/// multiple threads may read/write the same value, potentially leading to
-/// identical counter values. However, the seed generation algorithm uses
-/// additional entropy sources to minimize the risk of seed collisions.
+/// Global counter to provide entropy for seed generation.
+/// Each call to nanoid increments this counter, ensuring different seeds
+/// even when called rapidly in sequence.
 ///
-/// For thread-safe operation, external synchronization is required.
+/// WARNING: This counter is NOT thread-safe. In multi-threaded environments,
+/// external synchronization is required.
 pub let global_call_count : Ref[Int] = { val: 0 }
 
 ///|
 /// Increment global counter (non-atomic, not thread-safe)
-///
-/// IMPORTANT: This function is NOT thread-safe and may have race conditions
-/// in concurrent environments. However, the seed generation uses multiple
-/// entropy sources beyond just the counter, so occasional counter collisions
-/// should not cause identical seeds.
 ///
 /// Returns: (old_value, new_value) tuple for use in seed generation
 pub fn increment_counter() -> (Int, Int) {
@@ -353,91 +298,11 @@ pub fn atomic_increment_counter() -> Int {
 
 // ========== Alphabet Validation Cache ==========
 
-// ========== Alphabet Validation Cache ==========
-// Note: Caching temporarily disabled due to Map API limitations
-// TODO: Re-implement when Map.insert is available or use alternative approach
-
 ///|
 /// Get cached validation result or compute and cache it
 /// Currently just calls validate_alphabet_uncached directly
 fn get_cached_alphabet_validation(alphabet : String) -> ValidationResult {
-  // TODO: Implement proper caching when Map API is more complete
   validate_alphabet_uncached(alphabet)
-}
-
-///|
-/// Create a new random number generator with a seed
-pub fn SimpleRng::new(seed : Int64) -> SimpleRng {
-  { state: seed }
-}
-
-///|
-/// Generate the next random 64-bit integer using xorshift64*
-pub fn SimpleRng::next_int64(self : SimpleRng) -> Int64 {
-  // Xorshift64* algorithm - high quality PRNG
-  // Avoid zero state which would cause the generator to get stuck
-  if self.state == 0L {
-    self.state = 1L
-  }
-
-  // Apply xorshift transformations to the state
-  self.state = self.state ^ (self.state >> 12)
-  self.state = self.state ^ (self.state << 25)
-  self.state = self.state ^ (self.state >> 27)
-
-  // The state transformations above are the actual state updates
-  self.state * XORSHIFT_MULTIPLIER
-}
-
-///|
-/// Safe absolute value for Int64 that handles MIN_VALUE overflow
-/// When value == Int64.MIN_VALUE (-9223372036854775808), -value would overflow
-/// to the same negative value. We map it to MAX_VALUE instead.
-fn safe_abs_int64(value : Int64) -> Int64 {
-  if value == -9223372036854775808L {
-    9223372036854775807L // Int64.MAX_VALUE
-  } else if value < 0L {
-    -value
-  } else {
-    value
-  }
-}
-
-///|
-/// Generate a random integer in range [0, limit) with uniform distribution
-pub fn SimpleRng::next_int(self : SimpleRng, limit : Int) -> Int {
-  if limit <= 0 {
-    return 0
-  }
-  if limit == 1 {
-    return 0
-  }
-
-  // For small limits, use simple approach to avoid complexity
-  if limit <= 256 {
-    let rand = self.next_int64()
-    let abs_rand = safe_abs_int64(rand)
-    return (abs_rand % limit.to_int64()).to_int()
-  }
-
-  // For larger limits, use rejection sampling with safety limit
-  let limit_64 = limit.to_int64()
-  let max_valid = MAX_SAFE_INT64 / limit_64 * limit_64
-  let mut attempts = 0
-  let max_attempts = MAX_REJECTION_ATTEMPTS // Prevent infinite loops
-  while attempts < max_attempts {
-    let rand = self.next_int64()
-    let abs_rand = safe_abs_int64(rand)
-    if abs_rand < max_valid {
-      return (abs_rand % limit_64).to_int()
-    }
-    attempts = attempts + 1
-  }
-
-  // Fallback: use simple modulo if rejection sampling fails
-  let rand = self.next_int64()
-  let abs_rand = safe_abs_int64(rand)
-  (abs_rand % limit_64).to_int()
 }
 
 // Performance utility functions removed - can be added back when needed
@@ -631,85 +496,18 @@ fn calculate_optimal_batch_size(
 }
 
 ///|
-/// Enhanced seed generation using multiple entropy sources (improved security)
-///
-/// This function uses multiple entropy sources to generate high-quality seeds:
-/// 1. Global counter (both old and new values for race condition resilience)
-/// 2. Size hint parameter
-/// 3. Cross-correlation mixing
-/// 4. SplitMix64 algorithm for avalanche effect
-///
-/// Even if the counter has race conditions in multi-threaded environments,
-/// the combination of multiple entropy sources and mixing steps should
-/// prevent seed collisions in practice.
-fn create_enhanced_seed(size_hint : Int) -> Int64 {
-  // Get both old and new counter values for maximum entropy
-  // Using both values helps mitigate race conditions - even if multiple
-  // threads get the same counter value, the timing differences will affect
-  // the mixing process differently
-  let (old_count, new_count) = increment_counter()
-  let old_count_64 = old_count.to_int64()
-  let new_count_64 = new_count.to_int64()
-  let size_factor = size_hint.to_int64()
-
-  // 2. Additional entropy sources for better unpredictability
-  // Mix both old and new counter values to maximize entropy
-  let thread_entropy = (old_count_64 * SPLITMIX_GOLDEN_RATIO) ^ new_count_64
-  let size_entropy = size_factor * ENTROPY_MIX1
-  let cross_entropy = (new_count_64 ^ size_factor) * ENTROPY_MIX2
-
-  // Add differential entropy from counter change
-  let counter_delta = (new_count_64 - old_count_64) * ENTROPY_MIX1
-
-  // 3. Use SplitMix64 algorithm for high-quality mixing
-  let mut seed = new_count_64 + SPLITMIX_GOLDEN_RATIO + thread_entropy
-  seed = (seed ^ (seed >> 30)) * SPLITMIX_MULT1
-  seed = (seed ^ (seed >> 27)) * SPLITMIX_MULT2
-  seed = seed ^ (seed >> 31)
-
-  // 4. Mix in additional entropy sources
-  seed = seed ^ size_entropy
-  seed = seed ^ (old_count_64 * SPLITMIX_GOLDEN_RATIO)
-  seed = seed ^ cross_entropy
-  seed = seed ^ counter_delta
-
-  // 5. Add cross-correlation prevention with enhanced mixing
-  seed = seed ^ (new_count_64 * size_factor * ENTROPY_MIX2)
-  seed = seed ^ ((new_count_64 << 16) | (size_factor & 0xFFFFL))
-  // Mix in old counter for additional entropy
-  seed = seed ^ ((old_count_64 << 24) | (new_count_64 & 0xFFFFFFL))
-
-  // 6. Final mixing step for better avalanche effect
-  seed = seed ^ (seed >> 33)
-  seed = seed * SPLITMIX_MULT3
-  seed = seed ^ (seed >> 33)
-  seed = seed * SPLITMIX_MULT4
-  seed = seed ^ (seed >> 33)
-
-  // 7. Additional security: ensure seed has good bit distribution
-  let bit_count = count_set_bits(seed)
-  if bit_count < 16 || bit_count > 48 {
-    // If bit distribution is poor, add more entropy
-    seed = seed ^ (SPLITMIX_GOLDEN_RATIO * (bit_count.to_int64() + 1L))
-  }
-
-  // Ensure seed is never zero to prevent RNG from getting stuck
-  if seed == 0L {
-    seed = SPLITMIX_GOLDEN_RATIO
-  }
-  seed
-}
-
-///|
-/// Count the number of set bits in an Int64 (for entropy quality check)
-pub fn count_set_bits(n : Int64) -> Int {
-  let mut count = 0
-  let mut num = n
-  while num != 0L {
-    count = count + 1
-    num = num & (num - 1L) // Clear the lowest set bit
-  }
-  count
+/// Create a 32-byte seed for ChaCha8 from global counter and size hint.
+/// Note: MoonBit currently lacks a system entropy API, so we use a
+/// monotonically increasing counter as the seed source. Each call
+/// produces a different seed, but the sequence is deterministic
+/// across program runs.
+fn create_seed_bytes(size_hint : Int) -> Bytes {
+  let (_old_count, new_count) = increment_counter()
+  // Build a 32-byte seed by mixing counter and size_hint into each byte
+  // using different multipliers per position for better distribution
+  Bytes::makei(32, fn(i) {
+    ((new_count * 1103515245 + size_hint * 40503 + i * 214013) >> (i % 4 * 8)).to_byte()
+  })
 }
 
 ///|
@@ -781,22 +579,16 @@ pub fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
 }
 
 ///|
-/// Internal function to generate secure random bytes
+/// Internal function to generate random bytes using ChaCha8 PRNG
+/// Uses MoonBit's standard library @random (ChaCha8-based) for
+/// better randomness quality compared to simple xorshift algorithms.
 fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
-  // Create high-quality seed using enhanced algorithm
-  let mut seed = create_enhanced_seed(size)
-  let rng = SimpleRng::new(seed)
+  let seed = create_seed_bytes(size)
+  let rng = @random.Rand::chacha8(seed~)
   let bytes = Array::make(size, 0)
-
-  // Generate bytes directly from RNG
   for i = 0; i < size; i = i + 1 {
-    bytes[i] = rng.next_int(256)
+    bytes[i] = rng.int(limit=256)
   }
-
-  // Security - Clear sensitive seed data from memory more thoroughly
-  seed = 0L
-
-  // Return bytes first - don't clear them here as they contain the random data we need!
   Ok(bytes)
 }
 

@@ -112,45 +112,52 @@ test "single_character_alphabet" {
 }
 
 ///|
-test "random_generator_quality" {
-  // Test random number generator quality and reproducibility
-  let rng1 = SimpleRng::new(12345L)
-  let rng2 = SimpleRng::new(12345L)
+test "chacha8_rng_quality" {
+  // Test that the standard library ChaCha8 RNG produces good quality output
+  let rng = @random.Rand::chacha8(
+    seed=b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20",
+  )
 
+  // Generate multiple values and verify they are different
+  let val1 = rng.int(limit=256)
+  let val2 = rng.int(limit=256)
+  let val3 = rng.int(limit=256)
+
+  // At least some values should differ (with overwhelming probability)
+  assert_true(val1 != val2 || val2 != val3)
+
+  // Values should be in range
+  assert_true(val1 >= 0 && val1 < 256)
+  assert_true(val2 >= 0 && val2 < 256)
+  assert_true(val3 >= 0 && val3 < 256)
+}
+
+///|
+test "chacha8_rng_reproducibility" {
   // Same seed should produce same sequence
-  let val1_1 = rng1.next_int64()
-  let val1_2 = rng1.next_int64()
-  let val2_1 = rng2.next_int64()
-  let val2_2 = rng2.next_int64()
-  assert_eq(val1_1, val2_1)
-  assert_eq(val1_2, val2_2)
+  let rng1 = @random.Rand::chacha8(
+    seed=b"\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a",
+  )
+  let rng2 = @random.Rand::chacha8(
+    seed=b"\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a\x2a",
+  )
 
-  // Values should be different
-  assert_true(val1_1 != val1_2)
+  for _i = 0; _i < 100; _i = _i + 1 {
+    assert_eq(rng1.int(limit=256), rng2.int(limit=256))
+  }
 }
 
 ///|
-test "random_generator_zero_state" {
-  // Test zero state handling
-  let rng = SimpleRng::new(0L)
-  let val1 = rng.next_int64()
-  let val2 = rng.next_int64()
-
-  // Should not get stuck in zero state
-  assert_true(val1 != 0L)
-  assert_true(val2 != 0L)
-  assert_true(val1 != val2)
-}
-
-///|
-test "random_distribution_basic" {
-  // Basic distribution test for next_int
-  let rng = SimpleRng::new(54321L)
+test "chacha8_distribution_basic" {
+  // Basic distribution test using ChaCha8
+  let rng = @random.Rand::chacha8(
+    seed=b"\xd4\x31\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+  )
   let counts = Array::make(4, 0)
 
   // Generate many samples
-  for i = 0; i < 1000; i = i + 1 {
-    let val = rng.next_int(4)
+  for _i = 0; _i < 1000; _i = _i + 1 {
+    let val = rng.int(limit=4)
     assert_true(val >= 0 && val < 4)
     counts[val] = counts[val] + 1
   }
@@ -162,29 +169,20 @@ test "random_distribution_basic" {
 }
 
 ///|
-test "random_generator_fixes" {
-  // Test that the fixed random generator produces different values
-  let rng = SimpleRng::new(12345L)
-  let values = Array::make(10, 0L)
+test "chacha8_rng_range_correctness" {
+  // Test that ChaCha8 produces values in correct ranges
+  let rng = @random.Rand::chacha8(
+    seed=b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20",
+  )
 
-  // Generate multiple values
-  for i = 0; i < 10; i = i + 1 {
-    values[i] = rng.next_int64()
-  }
-
-  // Check that we get different values (not all the same)
-  let mut all_same = true
-  for i = 1; i < 10; i = i + 1 {
-    if values[i] != values[0] {
-      all_same = false
-    }
-  }
-  assert_false(all_same) // Should not all be the same
-
-  // Test that next_int produces values in correct range
-  for i = 0; i < 100; i = i + 1 {
-    let val = rng.next_int(10)
+  for _i = 0; _i < 100; _i = _i + 1 {
+    let val = rng.int(limit=10)
     assert_true(val >= 0 && val < 10)
+  }
+
+  for _i = 0; _i < 100; _i = _i + 1 {
+    let val = rng.int(limit=256)
+    assert_true(val >= 0 && val < 256)
   }
 }
 
@@ -254,17 +252,10 @@ test "security_enhancements" {
     assert_eq(test_bytes[i], 0)
   }
 
-  // Test thread-safe counter increment
+  // Test counter increment
   let initial_count = global_call_count.val
   let new_count = atomic_increment_counter()
   assert_true(new_count > initial_count)
-
-  // Test bit counting function
-  assert_eq(count_set_bits(0L), 0)
-  assert_eq(count_set_bits(1L), 1)
-  assert_eq(count_set_bits(3L), 2) // 0b11
-  assert_eq(count_set_bits(7L), 3) // 0b111
-  assert_eq(count_set_bits(15L), 4) // 0b1111
 }
 
 ///|
@@ -755,19 +746,16 @@ test "unicode_alphabet_iteration_consistency" {
 }
 
 ///|
-test "int64_min_value_overflow_fix" {
-  // Test that Int64.MIN_VALUE is handled correctly without overflow
-  // This tests the fix for the abs_rand overflow bug
+test "chacha8_rng_value_range" {
+  // Test that ChaCha8 RNG always produces values in valid range
+  // This replaces the previous Int64.MIN_VALUE overflow test since
+  // ChaCha8 handles value generation internally without overflow risks
+  let rng = @random.Rand::chacha8(
+    seed=b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+  )
 
-  // Create a RNG that will produce Int64.MIN_VALUE
-  // We need to set the state such that next_int64() returns MIN_VALUE
-  let rng = SimpleRng::new(1L)
-
-  // Test multiple times to increase chance of hitting MIN_VALUE
-  // In practice, MIN_VALUE has probability 1/2^64, so we test the fix logic directly
   for _i = 0; _i < 1000; _i = _i + 1 {
-    let val = rng.next_int(256)
-    // The result should always be non-negative
+    let val = rng.int(limit=256)
     assert_true(val >= 0)
     assert_true(val < 256)
   }
@@ -775,7 +763,7 @@ test "int64_min_value_overflow_fix" {
   // Test with different limits
   for limit in [10, 64, 100, 256] {
     for _j = 0; _j < 100; _j = _j + 1 {
-      let val = rng.next_int(limit)
+      let val = rng.int(limit~)
       assert_true(val >= 0)
       assert_true(val < limit)
     }

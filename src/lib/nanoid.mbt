@@ -168,45 +168,12 @@ fn validate_all_parameters(
 }
 
 ///|
-/// Constant-time string comparison to prevent timing attacks
-/// This is important for security-sensitive applications
-/// Usage: Use this when comparing sensitive strings like tokens or IDs
-/// Note: Length difference is incorporated into result without early return
-/// to minimize timing side-channel leakage
-pub fn constant_time_eq(a : String, b : String) -> Bool {
-  // Convert strings to character arrays for safe Unicode iteration
-  let chars_a = string_to_chars(a)
-  let chars_b = string_to_chars(b)
-  let len_a = chars_a.length()
-  let len_b = chars_b.length()
-
-  // Include length difference in result (non-zero if different)
-  let mut result = len_a ^ len_b
-
-  // Compare up to the length of the longer string
-  // This ensures constant-time regardless of where strings differ
-  let max_len = if len_a > len_b { len_a } else { len_b }
-  for i = 0; i < max_len; i = i + 1 {
-    let c_a = if i < len_a { chars_a[i].to_int() } else { 0 }
-    let c_b = if i < len_b { chars_b[i].to_int() } else { 0 }
-    result = result | (c_a ^ c_b)
-  }
-  result == 0
-}
-
-///|
 /// Helper function to convert string to character array using safe iteration
-/// Note: Requires two passes (count + fill) because MoonBit arrays need pre-allocated size.
-/// This is a necessary tradeoff for type safety and memory efficiency.
-/// For frequently used alphabets, consider using get_cached_alphabet_chars() to cache results.
-pub fn string_to_chars(s : String) -> Array[Char] {
-  // First pass: count characters (handles Unicode correctly - emoji count as single characters)
+fn string_to_chars(s : String) -> Array[Char] {
   let mut count = 0
   for _char in s {
     count = count + 1
   }
-
-  // Second pass: fill array with characters
   let chars = Array::make(count, ' ')
   let mut i = 0
   for char in s {
@@ -217,20 +184,11 @@ pub fn string_to_chars(s : String) -> Array[Char] {
 }
 
 ///|
-/// Secure memory clearing for sensitive data (enhanced)
-pub fn secure_clear_bytes(bytes : Array[Int]) -> Unit {
-  // Clear the array contents to prevent sensitive data from remaining in memory
-  // Use multiple passes to make it harder for compiler to optimize away
+/// Clear array contents to prevent sensitive data from remaining in memory
+fn secure_clear_bytes(bytes : Array[Int]) -> Unit {
   for i = 0; i < bytes.length(); i = i + 1 {
     bytes[i] = 0
   }
-  // Second pass with different pattern to prevent optimization
-  for i = 0; i < bytes.length(); i = i + 1 {
-    bytes[i] = bytes[i] ^ 0xFF
-    bytes[i] = bytes[i] ^ 0xFF // XOR twice to get back to 0, but prevents optimization
-  }
-  // Note: In a real implementation, we might want to add memory barriers
-  // or use volatile operations to prevent compiler optimizations
 }
 
 // ========== Constants and Alphabets ==========
@@ -275,25 +233,16 @@ const MAX_BATCH_SIZE = 256
 ///
 /// WARNING: This counter is NOT thread-safe. In multi-threaded environments,
 /// external synchronization is required.
-pub let global_call_count : Ref[Int] = { val: 0 }
+let global_call_count : Ref[Int] = { val: 0 }
 
 ///|
 /// Increment global counter (non-atomic, not thread-safe)
 ///
 /// Returns: (old_value, new_value) tuple for use in seed generation
-pub fn increment_counter() -> (Int, Int) {
+fn increment_counter() -> (Int, Int) {
   let old_val = global_call_count.val
   global_call_count.val = old_val + 1
   (old_val, old_val + 1)
-}
-
-///|
-/// Backward compatibility alias for increment_counter
-/// @deprecated Use increment_counter instead
-/// Returns only the new value for compatibility
-pub fn atomic_increment_counter() -> Int {
-  let (_old, new_val) = increment_counter()
-  new_val
 }
 
 // ========== Alphabet Validation Cache ==========
@@ -310,14 +259,14 @@ fn get_cached_alphabet_validation(alphabet : String) -> ValidationResult {
 ///|
 /// Convert alphabet string to character array for efficient access
 /// Uses safe Unicode iteration to handle all characters correctly (including emoji, etc.)
-pub fn alphabet_to_chars(alphabet : String) -> Array[Char] {
+fn alphabet_to_chars(alphabet : String) -> Array[Char] {
   // Use the helper function for safe Unicode conversion
   string_to_chars(alphabet)
 }
 
 ///|
 /// Get precomputed mask for common alphabet sizes
-pub fn get_precomputed_mask(alphabet_length : Int) -> Int? {
+fn get_precomputed_mask(alphabet_length : Int) -> Int? {
   match alphabet_length {
     2 => Some(1) // 2^1 - 1
     4 => Some(3) // 2^2 - 1
@@ -334,7 +283,7 @@ pub fn get_precomputed_mask(alphabet_length : Int) -> Int? {
 ///|
 /// Calculate mask for uniform distribution (power of 2 - 1)
 /// Uses precomputed values for common sizes, falls back to calculation for others
-pub fn calculate_mask(alphabet_length : Int) -> Int {
+fn calculate_mask(alphabet_length : Int) -> Int {
   match get_precomputed_mask(alphabet_length) {
     Some(mask) => mask
     None => {
@@ -436,7 +385,7 @@ fn process_random_batch_optimized(
 ///   unnecessary multiple batches, increasing RNG calls and memory clearing. This version
 ///   keeps semantics minimal while enabling single-batch generation for common alphabets
 ///   like 64 (URL/base64) and 32 (base32) when size is within limits.
-pub fn get_precomputed_batch_size(
+fn get_precomputed_batch_size(
   alphabet_length : Int,
   target_size : Int,
   mask : Int,
@@ -528,35 +477,7 @@ fn create_seed_bytes(size_hint : Int) -> Bytes {
     values[i] = output
   }
   // Extract bytes from the 4 Int64 values in little-endian order
-  Bytes::makei(32, fn(i) {
-    (values[i / 8] >> (i % 8 * 8)).to_byte()
-  })
-}
-
-///|
-/// Calculate entropy efficiency for a given alphabet size and mask
-pub fn calculate_entropy_efficiency(
-  alphabet_length : Int,
-  mask : Int,
-) -> Double {
-  alphabet_length.to_double() / (mask + 1).to_double()
-}
-
-///|
-/// Estimate waste factor for rejection sampling
-pub fn calculate_waste_factor(alphabet_length : Int, mask : Int) -> Double {
-  let efficiency = calculate_entropy_efficiency(alphabet_length, mask)
-  1.0 / efficiency
-}
-
-///|
-/// Get optimal batch size recommendation for given parameters
-pub fn get_batch_size_recommendation(
-  alphabet_length : Int,
-  target_size : Int,
-  mask : Int,
-) -> Int {
-  calculate_optimal_batch_size(alphabet_length, target_size, mask)
+  Bytes::makei(32, fn(i) { (values[i / 8] >> (i % 8 * 8)).to_byte() })
 }
 
 ///|
@@ -571,15 +492,8 @@ let alphabet_char_cache : Ref[@immut/hashmap.HashMap[String, Array[Char]]] = {
 }
 
 ///|
-/// Clear the alphabet character cache
-/// Useful when memory needs to be freed or when testing
-pub fn clear_alphabet_cache() -> Unit {
-  alphabet_char_cache.val = @immut/hashmap.new()
-}
-
-///|
 /// Get cached character array for alphabet, or convert and cache it
-pub fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
+fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
   let cache = alphabet_char_cache.val
 
   // Check if alphabet is already cached using the map
@@ -816,13 +730,3 @@ pub let url_safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567
 /// Filename-safe characters for cross-platform compatibility
 /// Safe for use in filenames on Windows, macOS, and Linux
 pub let filename_safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
-
-// ========== Security Utilities ==========
-
-///|
-/// Secure ID verification using constant-time comparison
-/// This prevents timing attacks when verifying IDs or tokens
-/// Usage: secure_verify_id(user_provided_id, expected_id)
-pub fn secure_verify_id(provided_id : String, expected_id : String) -> Bool {
-  constant_time_eq(provided_id, expected_id)
-}

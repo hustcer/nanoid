@@ -187,149 +187,13 @@ test "chacha8_rng_range_correctness" {
 }
 
 ///|
-test "constant_time_comparison" {
-  // Test constant-time string comparison
-  assert_true(constant_time_eq("hello", "hello"))
-  assert_true(constant_time_eq("", ""))
-  assert_false(constant_time_eq("hello", "world"))
-  assert_false(constant_time_eq("hello", "hello2"))
-  assert_false(constant_time_eq("short", "longer"))
-
-  // Test with nanoid generated strings
-  let id1 = nanoid().unwrap()
-  assert_true(constant_time_eq(id1, id1))
-  // FIXED: Use different fixed strings to avoid random collision
-  assert_false(constant_time_eq("test_id_1", "test_id_2"))
-
-  // Test the new secure_verify_id function
-  assert_true(secure_verify_id("same_id", "same_id"))
-  assert_false(secure_verify_id("id1", "id2"))
-}
-
-///|
-test "final_optimizations" {
-  // Test enhanced entropy efficiency calculations
-  let efficiency_16 = calculate_entropy_efficiency(16, 15)
-  assert_true(efficiency_16 > 0.9) // Should be close to 1.0 for power-of-2
-  let efficiency_10 = calculate_entropy_efficiency(10, 15)
-  assert_true(efficiency_10 > 0.6 && efficiency_10 < 0.7) // Should be around 0.625
-
-  // Test waste factor calculation
-  let waste_16 = calculate_waste_factor(16, 15)
-  assert_true(waste_16 < 1.1) // Should be close to 1.0
-  let waste_10 = calculate_waste_factor(10, 15)
-  assert_true(waste_10 > 1.4 && waste_10 < 1.7) // Should be around 1.6
-
-  // Test batch size recommendations
-  let batch_16 = get_batch_size_recommendation(16, 20, 15)
-  assert_true(batch_16 > 0 && batch_16 <= 256)
-  let batch_64 = get_batch_size_recommendation(64, 20, 63)
-  assert_true(batch_64 > 0 && batch_64 <= 256)
-
-  // Test that different calls produce different IDs (improved randomness)
-  let ids = Array::make(5, "")
-  for i = 0; i < 5; i = i + 1 {
-    ids[i] = nanoid().unwrap()
-  }
-
-  // Verify all IDs are different (improved entropy should make this very likely)
-  for i = 0; i < 5; i = i + 1 {
-    for j = i + 1; j < 5; j = j + 1 {
-      assert_false(ids[i] == ids[j])
-    }
-  }
-}
-
-///|
-test "security_enhancements" {
-  // Test that secure clearing works (we can't directly test if memory is cleared,
-  // but we can test that the function doesn't crash)
-  let test_bytes = Array::make(10, 42)
-  secure_clear_bytes(test_bytes)
-
-  // After clearing, all bytes should be zero
-  for i = 0; i < test_bytes.length(); i = i + 1 {
-    assert_eq(test_bytes[i], 0)
-  }
-
-  // Test counter increment
-  let initial_count = global_call_count.val
-  let new_count = atomic_increment_counter()
-  assert_true(new_count > initial_count)
-}
-
-///|
 test "final_fixes_verification" {
-  // Test alphabet caching works correctly
-  let alphabet = "ABCDEF"
-  let chars1 = get_cached_alphabet_chars(alphabet)
-  let chars2 = get_cached_alphabet_chars(alphabet) // Should use cache
-
-  // Verify they have the same content
-  assert_eq(chars1.length(), chars2.length())
-  for i = 0; i < chars1.length(); i = i + 1 {
-    assert_eq(chars1[i], chars2[i])
-  }
-
-  // Test that different alphabets work correctly
-  let alphabet2 = "123456"
-  let chars3 = get_cached_alphabet_chars(alphabet2)
-  assert_eq(chars3.length(), 6)
-  assert_eq(chars3[0], '1')
-  assert_eq(chars3[5], '6')
-
-  // Test enhanced memory clearing (if available)
-  let test_bytes = Array::make(5, 42)
-  secure_clear_bytes(test_bytes)
-  for i = 0; i < test_bytes.length(); i = i + 1 {
-    assert_eq(test_bytes[i], 0)
-  }
-
-  // Test that the fixes don't break existing functionality
+  // Test that nanoid generation works correctly
   let id1 = nanoid(size=10).unwrap()
   let id2 = nanoid(size=10).unwrap()
   assert_eq(id1.length(), 10)
   assert_eq(id2.length(), 10)
   assert_false(id1 == id2) // Should be different
-}
-
-///|
-test "optimization_functions" {
-  // Test precomputed mask function
-  assert_eq(get_precomputed_mask(2), Some(1))
-  assert_eq(get_precomputed_mask(4), Some(3))
-  assert_eq(get_precomputed_mask(16), Some(15))
-  assert_eq(get_precomputed_mask(64), Some(63))
-  assert_eq(get_precomputed_mask(256), Some(255))
-  assert_eq(get_precomputed_mask(100), None) // Non-power-of-2
-
-  // Test mask calculation with precomputed values
-  assert_eq(calculate_mask(2), 1)
-  assert_eq(calculate_mask(16), 15)
-  assert_eq(calculate_mask(64), 63)
-
-  // Test alphabet to chars conversion
-  let alphabet = "ABC"
-  let chars = alphabet_to_chars(alphabet)
-  assert_eq(chars.length(), 3)
-  assert_eq(chars[0], 'A')
-  assert_eq(chars[1], 'B')
-  assert_eq(chars[2], 'C')
-
-  // Test precomputed batch sizes with new signature
-  // Only power-of-2 alphabets with perfect mask match should return Some()
-  assert_eq(get_precomputed_batch_size(2, 21, 1), Some(21)) // mask+1 == alphabet_length
-  assert_eq(get_precomputed_batch_size(4, 21, 3), Some(21)) // mask+1 == alphabet_length
-  assert_eq(get_precomputed_batch_size(16, 21, 15), Some(21)) // mask+1 == alphabet_length
-  assert_eq(get_precomputed_batch_size(64, 21, 63), Some(21)) // mask+1 == alphabet_length
-
-  // Test cases where mask+1 != alphabet_length (should return None)
-  assert_eq(get_precomputed_batch_size(64, 21, 31), None) // mask+1 != alphabet_length
-  assert_eq(get_precomputed_batch_size(100, 21, 127), None) // mask+1 != alphabet_length
-
-  // Test clamping behavior
-  assert_eq(get_precomputed_batch_size(16, 5, 15), Some(8)) // Clamped to MIN_BATCH_SIZE
-  assert_eq(get_precomputed_batch_size(64, 300, 63), Some(256)) // Clamped to MAX_BATCH_SIZE
 }
 
 ///|
@@ -501,8 +365,12 @@ test "unicode_emoji_alphabet_support" {
   let id_emoji = emoji_gen.unwrap()()
   assert_true(id_emoji is Ok(_))
   let emoji_id = id_emoji.unwrap()
-  // Should generate 5 repetitions of the same emoji
-  assert_eq(string_to_chars(emoji_id).length(), 5)
+  // Count characters using for-in loop
+  let mut emoji_count = 0
+  for _c in emoji_id {
+    emoji_count = emoji_count + 1
+  }
+  assert_eq(emoji_count, 5)
 
   // Test mixed emoji alphabet
   let mixed_emoji_gen = custom_alphabet("😀😁😂", size=10)
@@ -510,8 +378,11 @@ test "unicode_emoji_alphabet_support" {
   let id_mixed = mixed_emoji_gen.unwrap()()
   assert_true(id_mixed is Ok(_))
   let mixed_id = id_mixed.unwrap()
-  // Should generate 10 characters from the emoji set
-  assert_eq(string_to_chars(mixed_id).length(), 10)
+  let mut mixed_count = 0
+  for _c in mixed_id {
+    mixed_count = mixed_count + 1
+  }
+  assert_eq(mixed_count, 10)
 
   // Test Chinese characters
   let chinese_gen = custom_alphabet("你好世界", size=8)
@@ -519,7 +390,11 @@ test "unicode_emoji_alphabet_support" {
   let id_chinese = chinese_gen.unwrap()()
   assert_true(id_chinese is Ok(_))
   let chinese_id = id_chinese.unwrap()
-  assert_eq(string_to_chars(chinese_id).length(), 8)
+  let mut chinese_count = 0
+  for _c in chinese_id {
+    chinese_count = chinese_count + 1
+  }
+  assert_eq(chinese_count, 8)
 
   // Test mixed ASCII and Unicode
   let mixed_gen = custom_alphabet("A😀B😁C", size=10)
@@ -527,44 +402,23 @@ test "unicode_emoji_alphabet_support" {
   let id_mixed_ascii = mixed_gen.unwrap()()
   assert_true(id_mixed_ascii is Ok(_))
   let mixed_ascii_id = id_mixed_ascii.unwrap()
-  assert_eq(string_to_chars(mixed_ascii_id).length(), 10)
+  let mut ascii_count = 0
+  for _c in mixed_ascii_id {
+    ascii_count = ascii_count + 1
+  }
+  assert_eq(ascii_count, 10)
 
   // Verify all characters in the generated ID are from the alphabet
-  let alphabet_chars = string_to_chars("A😀B😁C")
-  let id_chars = string_to_chars(mixed_ascii_id)
-  for i = 0; i < id_chars.length(); i = i + 1 {
-    let char = id_chars[i]
+  let alphabet = "A😀B😁C"
+  for c in mixed_ascii_id {
     let mut found = false
-    for j = 0; j < alphabet_chars.length(); j = j + 1 {
-      if char == alphabet_chars[j] {
+    for a in alphabet {
+      if c == a {
         found = true
       }
     }
     assert_true(found)
   }
-}
-
-///|
-test "unicode_constant_time_comparison" {
-  // Test constant-time comparison with emoji
-  let id1 = "😀😁😂"
-  let id2 = "😀😁😂"
-  let id3 = "😀😁😃"
-  assert_true(constant_time_eq(id1, id2))
-  assert_false(constant_time_eq(id1, id3))
-
-  // Test with mixed Unicode
-  let mixed1 = "你好😀世界"
-  let mixed2 = "你好😀世界"
-  let mixed3 = "你好😁世界"
-  assert_true(constant_time_eq(mixed1, mixed2))
-  assert_false(constant_time_eq(mixed1, mixed3))
-
-  // Test empty strings
-  assert_true(constant_time_eq("", ""))
-
-  // Test different lengths
-  assert_false(constant_time_eq("😀", "😀😀"))
 }
 
 ///|
@@ -619,53 +473,6 @@ test "duplicate_character_error_type" {
 }
 
 ///|
-test "clear_alphabet_cache" {
-  // Use the cache
-  let _ = get_cached_alphabet_chars("TEST123")
-  let _ = get_cached_alphabet_chars("ANOTHER")
-
-  // Clear the cache
-  clear_alphabet_cache()
-
-  // After clearing, cache should work again
-  let chars = get_cached_alphabet_chars("NEW")
-  assert_eq(chars.length(), 3)
-  assert_eq(chars[0], 'N')
-  assert_eq(chars[1], 'E')
-  assert_eq(chars[2], 'W')
-}
-
-///|
-test "increment_counter_works" {
-  // Test the renamed function - now returns (old_value, new_value) tuple
-  let initial = global_call_count.val
-  let (_old_val, new_val) = increment_counter()
-  assert_true(new_val > initial)
-
-  // Test backward compatibility alias - returns only new value
-  let new_val2 = atomic_increment_counter()
-  assert_true(new_val2 > new_val)
-}
-
-///|
-test "constant_time_eq_no_early_return" {
-  // Test that constant_time_eq handles different lengths correctly
-  // without early return (for better timing attack resistance)
-  assert_false(constant_time_eq("short", "longer_string"))
-  assert_false(constant_time_eq("longer_string", "short"))
-  assert_false(constant_time_eq("a", ""))
-  assert_false(constant_time_eq("", "b"))
-
-  // Same length, different content
-  assert_false(constant_time_eq("aaaa", "aaab"))
-  assert_false(constant_time_eq("aaaa", "baaa"))
-
-  // Equal strings
-  assert_true(constant_time_eq("test", "test"))
-  assert_true(constant_time_eq("", ""))
-}
-
-///|
 test "error_type_coverage" {
   // Test all error types have proper string representations by triggering actual errors
 
@@ -713,15 +520,20 @@ test "error_type_coverage" {
 test "unicode_alphabet_iteration_consistency" {
   // Ensure Unicode handling is consistent across the codebase
   let alphabet = "A😀B😁C"
-  let alphabet_chars = string_to_chars(alphabet)
 
   // Should have 5 characters, not byte count
-  assert_eq(alphabet_chars.length(), 5)
-  assert_eq(alphabet_chars[0], 'A')
-  assert_eq(alphabet_chars[1], '😀')
-  assert_eq(alphabet_chars[2], 'B')
-  assert_eq(alphabet_chars[3], '😁')
-  assert_eq(alphabet_chars[4], 'C')
+  let mut char_count = 0
+  let chars : Array[Char] = []
+  for c in alphabet {
+    char_count = char_count + 1
+    chars.push(c)
+  }
+  assert_eq(char_count, 5)
+  assert_eq(chars[0], 'A')
+  assert_eq(chars[1], '😀')
+  assert_eq(chars[2], 'B')
+  assert_eq(chars[3], '😁')
+  assert_eq(chars[4], 'C')
 
   // Generate ID and verify using consistent iteration
   let gen = custom_alphabet(alphabet, size=10)
@@ -729,15 +541,17 @@ test "unicode_alphabet_iteration_consistency" {
   let id = gen.unwrap()().unwrap()
 
   // Verify length using character count
-  let id_chars = string_to_chars(id)
-  assert_eq(id_chars.length(), 10)
+  let mut id_len = 0
+  for _c in id {
+    id_len = id_len + 1
+  }
+  assert_eq(id_len, 10)
 
   // Verify all characters are from alphabet
-  for i = 0; i < id_chars.length(); i = i + 1 {
-    let char = id_chars[i]
+  for c in id {
     let mut found = false
-    for j = 0; j < alphabet_chars.length(); j = j + 1 {
-      if char == alphabet_chars[j] {
+    for a in alphabet {
+      if c == a {
         found = true
       }
     }

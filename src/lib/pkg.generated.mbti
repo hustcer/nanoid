@@ -53,6 +53,8 @@ pub enum NanoidError {
 }
 pub fn NanoidError::to_string(Self) -> String
 pub fn NanoidError::to_string_detailed(Self) -> String
+pub impl Eq for NanoidError
+pub impl Show for NanoidError
 
 // Type aliases
 

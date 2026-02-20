@@ -8,12 +8,12 @@
 /// Error types for nanoid operations
 pub enum NanoidError {
   EmptyAlphabet
-  OversizedAlphabet(Int) // Contains the actual length
-  DuplicateCharacter(Char, Int, Int) // Contains (char, first_position, duplicate_position)
-  SizeTooSmall(Int) // Contains the invalid size value (<= 0)
-  SizeTooLarge(Int) // Contains the invalid size value (> MAX_ID_SIZE)
+  OversizedAlphabet(Int)
+  DuplicateCharacter(Char, Int, Int)
+  SizeTooSmall(Int)
+  SizeTooLarge(Int)
   RandomGenerationError(String)
-}
+} derive(Show, Eq)
 
 ///|
 /// Convert NanoidError to string representation

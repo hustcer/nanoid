@@ -9,12 +9,14 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 ## Features
 
 - **Small & Fast**: Minimal overhead, optimized for performance
-- **Secure**: Uses cryptographically strong random number generation
 - **URL-Safe**: Generated IDs are safe for use in URLs, filenames, and databases
 - **Customizable**: Support for custom alphabets and ID sizes
-- **Error Safe**: Proper error handling instead of runtime panics
-- **Type Safe**: Full MoonBit type system support
+- **Unicode Support**: Full support for Unicode alphabets including emoji and CJK characters
+- **Error Safe**: Proper error handling with `Result` types instead of runtime panics
+- **Type Safe**: Full MoonBit type system support with `derive(Show, Eq)` on error types
 - **Zero Dependencies**: No external dependencies beyond MoonBit core
+
+> **Note**: MoonBit currently lacks a system entropy API, so the ChaCha8 RNG uses a deterministic seed. All ID sequences are reproducible across program runs. This will be resolved when MoonBit adds system entropy support.
 
 ## Quick Start
 
@@ -76,13 +78,16 @@ match hex_generator_result {
 let safe_generator = @nanoid.custom_alphabet_or_empty(@nanoid.nolookalikes, size=12)
 let safe_id = safe_generator()
 println(safe_id) // => "6B9CMnpqrt7w" or "" on error
+
+// Unicode alphabets are fully supported
+let emoji_gen = @nanoid.custom_alphabet("😀😁😂🤣😃😄", size=5)
 ```
 
 ## API Reference
 
 ### Core Functions
 
-#### `nanoid(size~ : Int = 21) -> Result[String, NanoidError]`
+#### `nanoid(size? : Int = 21) -> Result[String, NanoidError]`
 
 Generates a URL-safe unique ID using the default alphabet.
 
@@ -92,10 +97,10 @@ Generates a URL-safe unique ID using the default alphabet.
 ```moonbit
 let id1 = @nanoid.nanoid()          // Ok("...") with 21 characters
 let id2 = @nanoid.nanoid(size=10)   // Ok("...") with 10 characters
-let id3 = @nanoid.nanoid(size=0)    // Err(InvalidSize(0))
+let id3 = @nanoid.nanoid(size=0)    // Err(SizeTooSmall(0))
 ```
 
-#### `nanoid_or_empty(size~ : Int = 21) -> String`
+#### `nanoid_or_empty(size? : Int = 21) -> String`
 
 Convenience function that returns empty string on error (for backward compatibility).
 
@@ -108,11 +113,11 @@ let id2 = @nanoid.nanoid_or_empty(size=10)   // 10 characters or ""
 let id3 = @nanoid.nanoid_or_empty(size=0)    // ""
 ```
 
-#### `custom_alphabet(alphabet : String, size~ : Int = 21) -> Result[() -> Result[String, NanoidError], NanoidError]`
+#### `custom_alphabet(alphabet : String, size? : Int = 21) -> Result[() -> Result[String, NanoidError], NanoidError]`
 
 Creates a generator function with a custom alphabet.
 
-- `alphabet`: String containing characters to use (1-256 characters)
+- `alphabet`: String containing unique characters to use (1-256 characters, no duplicates)
 - `size`: Default length for generated IDs (must be positive)
 - Returns: `Ok(generator)` or `Err(NanoidError)` for invalid parameters
 
@@ -132,11 +137,11 @@ let bad_result = @nanoid.custom_alphabet("", size=8)
 // Returns Err(EmptyAlphabet)
 ```
 
-#### `custom_alphabet_or_empty(alphabet : String, size~ : Int = 21) -> (() -> String)`
+#### `custom_alphabet_or_empty(alphabet : String, size? : Int = 21) -> () -> String`
 
 Convenience function that returns empty string on error (for backward compatibility).
 
-- `alphabet`: String containing characters to use
+- `alphabet`: String containing unique characters to use
 - `size`: Default length for generated IDs
 - Returns: A generator function that returns string or empty string on error
 
@@ -144,7 +149,7 @@ Convenience function that returns empty string on error (for backward compatibil
 
 Creates a generator with custom alphabet and random function.
 
-- `alphabet`: String containing characters to use (1-256 characters)
+- `alphabet`: String containing unique characters to use (1-256 characters, no duplicates)
 - `size`: Length for generated IDs (must be positive)
 - `random`: Custom random byte generator function that returns Result
 - Returns: `Ok(generator)` or `Err(NanoidError)` for invalid parameters
@@ -156,11 +161,12 @@ The library uses MoonBit's Result type for proper error handling:
 ```moonbit
 pub enum NanoidError {
   EmptyAlphabet                    // Alphabet cannot be empty
-  OversizedAlphabet(Int)          // Alphabet exceeds 256 characters
-  SizeTooSmall(Int)               // Size must be greater than 0
-  SizeTooLarge(Int)               // Size exceeds maximum allowed
-  RandomGenerationError(String)   // Random number generation failed
-}
+  OversizedAlphabet(Int)           // Alphabet exceeds 256 characters
+  DuplicateCharacter(Char, Int, Int) // Duplicate character found at positions
+  SizeTooSmall(Int)                // Size must be greater than 0
+  SizeTooLarge(Int)                // Size exceeds maximum allowed (1,000,000)
+  RandomGenerationError(String)    // Random number generation failed
+} derive(Show, Eq)
 ```
 
 ### Error Handling Examples
@@ -171,6 +177,13 @@ match @nanoid.nanoid(size=-1) {
   Ok(id) => println("Generated: \{id}")
   Err(SizeTooSmall(size)) => println("Invalid size: \{size}")
   Err(e) => println("Other error: \{e.to_string()}")
+}
+
+// Detect duplicate characters in alphabet
+match @nanoid.custom_alphabet("ABCA", size=5) {
+  Err(DuplicateCharacter(char, first, dup)) =>
+    println("'\{char}' duplicated at \{dup}, first at \{first}")
+  _ => ()
 }
 
 // Use convenience functions for backward compatibility
@@ -206,13 +219,12 @@ Based on [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary), we p
 | `nolookalikes_safe` | `6789BCDF...twz` (35 chars)      | No lookalikes + no vowels (safer for public IDs)            |
 | `base58`            | `123456789ABCD...xyz` (58 chars) | Bitcoin-style (excludes 0,O,I,l)                            |
 | `base62`            | `0-9A-Za-z` (62 chars)           | Standard base62 encoding                                    |
-| `url_safe`          | `A-Za-z0-9_-` (64 chars)         | URL-safe characters                                         |
-| `filename_safe`     | `A-Za-z0-9_-` (64 chars)         | Cross-platform filename safe                                |
+| `url_safe`          | `A-Za-z0-9_-` (64 chars)         | Alias of `url_alphabet`                                     |
+| `filename_safe`     | `A-Za-z0-9_-` (64 chars)         | Alias of `url_alphabet`, for filename contexts              |
 
 ### Usage Examples
 
 ```moonbit
-
 // Use different alphabets for different purposes
 let uuid_like = @nanoid.custom_alphabet(@nanoid.hex, size=32)
 let readable = @nanoid.custom_alphabet(@nanoid.nolookalikes, size=8)
@@ -230,12 +242,10 @@ moon test --target all
 
 The test suite includes:
 
-- Basic functionality tests
-- Custom alphabet tests
-- Error handling tests
-- Edge case tests
-- Distribution quality tests
-- All predefined alphabet tests
+- Basic functionality and custom alphabet tests
+- Error handling and edge case tests (boundaries, Unicode, duplicate detection)
+- ChaCha8 RNG quality, reproducibility, distribution, and range tests
+- Unicode emoji and CJK character support tests
 
 ## License
 

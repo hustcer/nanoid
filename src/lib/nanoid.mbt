@@ -54,11 +54,6 @@ pub fn NanoidError::to_string_detailed(self : NanoidError) -> String {
   }
 }
 
-///|
-/// Helper function to create error results
-fn[T] error_result(error : NanoidError) -> Result[T, NanoidError] {
-  Err(error)
-}
 
 // ========== Unified Validation Module ==========
 
@@ -304,7 +299,7 @@ fn generate_id_characters(
 
   // Handle insufficient randomness case by returning an error
   if counter < size {
-    return error_result(
+    return Err(
       RandomGenerationError(
         "Failed to generate sufficient random characters after \{batch_count} batches. This may indicate an issue with the random number generator.",
       ),

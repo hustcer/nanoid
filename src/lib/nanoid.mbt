@@ -496,17 +496,40 @@ fn calculate_optimal_batch_size(
 }
 
 ///|
+/// SplitMix64 output function: produces a well-distributed 64-bit value
+/// from the given state, advancing the state for the next call.
+/// Returns (next_state, output_value).
+fn splitmix64_next(state : Int64) -> (Int64, Int64) {
+  let s = state + 0x9E3779B97F4A7C15L // golden ratio
+  let mut z = s
+  z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9L
+  z = (z ^ (z >> 27)) * 0x94D049BB133111EBL
+  z = z ^ (z >> 31)
+  (s, z)
+}
+
+///|
 /// Create a 32-byte seed for ChaCha8 from global counter and size hint.
-/// Note: MoonBit currently lacks a system entropy API, so we use a
-/// monotonically increasing counter as the seed source. Each call
-/// produces a different seed, but the sequence is deterministic
-/// across program runs.
+/// Uses SplitMix64 to expand the counter into 32 bytes with good avalanche
+/// properties, ensuring all seed bytes carry meaningful entropy.
+///
+/// Note: MoonBit currently lacks a system entropy API, so the actual entropy
+/// comes only from the counter (~32 bits). The mixing ensures this entropy
+/// is well-distributed across all 32 bytes, but the seed space remains limited.
 fn create_seed_bytes(size_hint : Int) -> Bytes {
   let (_old_count, new_count) = increment_counter()
-  // Build a 32-byte seed by mixing counter and size_hint into each byte
-  // using different multipliers per position for better distribution
+  // Combine counter and size_hint into a single 64-bit state
+  let mut state = new_count.to_int64() ^ (size_hint.to_int64() << 32)
+  // Generate 4 well-mixed 64-bit values (4 * 8 = 32 bytes)
+  let values = Array::make(4, 0L)
+  for i = 0; i < 4; i = i + 1 {
+    let (next_state, output) = splitmix64_next(state)
+    state = next_state
+    values[i] = output
+  }
+  // Extract bytes from the 4 Int64 values in little-endian order
   Bytes::makei(32, fn(i) {
-    ((new_count * 1103515245 + size_hint * 40503 + i * 214013) >> (i % 4 * 8)).to_byte()
+    (values[i / 8] >> (i % 8 * 8)).to_byte()
   })
 }
 

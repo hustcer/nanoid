@@ -26,13 +26,9 @@ fn get_precomputed_batch_size(Int, Int, Int) -> Int?
 
 fn get_precomputed_mask(Int) -> Int?
 
-let global_call_count : Ref[Int]
-
 let hex : String
 
 let hex_upper : String
-
-fn increment_counter() -> (Int, Int)
 
 let lowercase : String
 

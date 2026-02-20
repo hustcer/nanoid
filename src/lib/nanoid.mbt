@@ -54,7 +54,6 @@ pub fn NanoidError::to_string_detailed(self : NanoidError) -> String {
   }
 }
 
-
 // ========== Unified Validation Module ==========
 
 ///|
@@ -214,23 +213,14 @@ const MAX_BATCH_SIZE = 256
 // ========== Random Number Generation ==========
 
 ///|
-/// Global counter to provide entropy for seed generation.
-/// Each call to nanoid increments this counter, ensuring different seeds
-/// even when called rapidly in sequence.
+/// Global persistent ChaCha8 RNG instance.
+/// Using a single instance avoids per-call initialization overhead and lets
+/// the internal state advance naturally, producing a longer non-repeating sequence.
 ///
-/// WARNING: This counter is NOT thread-safe. In multi-threaded environments,
-/// external synchronization is required.
-let global_call_count : Ref[Int] = { val: 0 }
-
-///|
-/// Increment global counter (non-atomic, not thread-safe)
-///
-/// Returns: (old_value, new_value) tuple for use in seed generation
-fn increment_counter() -> (Int, Int) {
-  let old_val = global_call_count.val
-  global_call_count.val = old_val + 1
-  (old_val, old_val + 1)
-}
+/// Note: MoonBit currently lacks a system entropy API, so the seed is fixed.
+/// All ID sequences are deterministic across program runs.
+/// WARNING: This RNG is NOT thread-safe.
+let global_rng : @random.Rand = @random.Rand::chacha8()
 
 ///|
 /// Get precomputed mask for common alphabet sizes
@@ -266,18 +256,15 @@ fn calculate_mask(alphabet_length : Int) -> Int {
 }
 
 ///|
-/// Generate ID characters using batch processing with rejection sampling (optimized)
+/// Generate ID characters using batch processing with rejection sampling
 fn generate_id_characters(
-  alphabet : String,
+  alphabet_chars : Array[Char],
+  alphabet_length : Int,
   size : Int,
   step : Int,
   mask : Int,
   get_random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[String, NanoidError] {
-  // Convert alphabet to character array once and get actual character count
-  // Critical for Unicode: alphabet.length() returns byte/code-unit count, not character count
-  let alphabet_chars = get_cached_alphabet_chars(alphabet)
-  let alphabet_length = alphabet_chars.length()
   let id_chars = Array::make(size, ' ')
   let mut counter = 0
   let mut batch_count = 0
@@ -332,8 +319,6 @@ fn process_random_batch_optimized(
   }
   counter
 }
-
-// Legacy function removed - now using optimized version directly
 
 ///|
 /// Heuristic fast-path for optimal batch size when rejection probability is zero.
@@ -410,42 +395,6 @@ fn calculate_optimal_batch_size(
 }
 
 ///|
-/// SplitMix64 output function: produces a well-distributed 64-bit value
-/// from the given state, advancing the state for the next call.
-/// Returns (next_state, output_value).
-fn splitmix64_next(state : Int64) -> (Int64, Int64) {
-  let s = state + 0x9E3779B97F4A7C15L // golden ratio
-  let mut z = s
-  z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9L
-  z = (z ^ (z >> 27)) * 0x94D049BB133111EBL
-  z = z ^ (z >> 31)
-  (s, z)
-}
-
-///|
-/// Create a 32-byte seed for ChaCha8 from global counter and size hint.
-/// Uses SplitMix64 to expand the counter into 32 bytes with good avalanche
-/// properties, ensuring all seed bytes carry meaningful entropy.
-///
-/// Note: MoonBit currently lacks a system entropy API, so the actual entropy
-/// comes only from the counter (~32 bits). The mixing ensures this entropy
-/// is well-distributed across all 32 bytes, but the seed space remains limited.
-fn create_seed_bytes(size_hint : Int) -> Bytes {
-  let (_old_count, new_count) = increment_counter()
-  // Combine counter and size_hint into a single 64-bit state
-  let mut state = new_count.to_int64() ^ (size_hint.to_int64() << 32)
-  // Generate 4 well-mixed 64-bit values (4 * 8 = 32 bytes)
-  let values = Array::make(4, 0L)
-  for i = 0; i < 4; i = i + 1 {
-    let (next_state, output) = splitmix64_next(state)
-    state = next_state
-    values[i] = output
-  }
-  // Extract bytes from the 4 Int64 values in little-endian order
-  Bytes::makei(32, fn(i) { (values[i / 8] >> (i % 8 * 8)).to_byte() })
-}
-
-///|
 /// Maximum number of alphabets to store in the cache.
 const MAX_ALPHABET_CACHE_SIZE = 16
 
@@ -481,54 +430,50 @@ fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
 }
 
 ///|
-/// Internal function to generate random bytes using ChaCha8 PRNG
-/// Uses MoonBit's standard library @random (ChaCha8-based) for
-/// better randomness quality compared to simple xorshift algorithms.
+/// Generate random bytes from the global ChaCha8 RNG
 fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
-  let seed = create_seed_bytes(size)
-  let rng = @random.Rand::chacha8(seed~)
   let bytes = Array::make(size, 0)
   for i = 0; i < size; i = i + 1 {
-    bytes[i] = rng.int(limit=256)
+    bytes[i] = global_rng.int(limit=256)
   }
   Ok(bytes)
 }
 
 ///|
-/// Internal function to generate ID with given alphabet, size, and random function
-/// Returns Result with ID string or NanoidError for invalid parameters
+/// Internal generation without validation (caller must validate first)
+fn generate_unchecked(
+  alphabet : String,
+  size : Int,
+  get_random : (Int) -> Result[Array[Int], NanoidError],
+) -> Result[String, NanoidError] {
+  let alphabet_chars = get_cached_alphabet_chars(alphabet)
+  let alphabet_length = alphabet_chars.length()
+
+  // Special case: single character alphabet - no randomness needed
+  if alphabet_length == 1 {
+    return Ok(String::from_array(Array::make(size, alphabet_chars[0])))
+  }
+
+  let mask = calculate_mask(alphabet_length)
+  let step = calculate_optimal_batch_size(alphabet_length, size, mask)
+  generate_id_characters(
+    alphabet_chars, alphabet_length, size, step, mask, get_random,
+  )
+}
+
+///|
+/// Generate ID with validation
 fn generate(
   alphabet : String,
   size : Int,
   get_random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[String, NanoidError] {
   match validate_parameters(alphabet, size) {
-    Valid => () // Continue with generation
-    InvalidAlphabet(error) => return Err(error)
-    InvalidSize(error) => return Err(error)
-    InvalidRandom(error) => return Err(error)
+    Valid => generate_unchecked(alphabet, size, get_random)
+    InvalidAlphabet(error) => Err(error)
+    InvalidSize(error) => Err(error)
+    InvalidRandom(error) => Err(error)
   }
-
-  // Convert alphabet to character array and get actual character count
-  // This is critical for Unicode handling - alphabet.length() returns byte/code-unit count
-  let alphabet_chars = get_cached_alphabet_chars(alphabet)
-  let alphabet_length = alphabet_chars.length()
-
-  // Special case: single character alphabet - no randomness needed
-  if alphabet_length == 1 {
-    let single_char = alphabet_chars[0]
-    let chars = Array::make(size, single_char)
-    return Ok(String::from_array(chars))
-  }
-
-  // Calculate mask for uniform distribution (avoid modulo bias)
-  let mask = calculate_mask(alphabet_length)
-
-  // Calculate optimal batch size for random byte generation
-  let step = calculate_optimal_batch_size(alphabet_length, size, mask)
-
-  // Generate ID characters using optimized batch processing
-  generate_id_characters(alphabet, size, step, mask, get_random)
 }
 
 ///|
@@ -559,11 +504,10 @@ pub fn custom_alphabet(
   alphabet : String,
   size? : Int = DEFAULT_SIZE,
 ) -> Result[() -> Result[String, NanoidError], NanoidError] {
-  // Use unified validation
   match validate_parameters(alphabet, size) {
     Valid =>
       Ok(fn() -> Result[String, NanoidError] {
-        generate(alphabet, size, get_random_bytes)
+        generate_unchecked(alphabet, size, get_random_bytes)
       })
     InvalidAlphabet(error) => Err(error)
     InvalidSize(error) => Err(error)
@@ -600,11 +544,10 @@ pub fn custom_random(
   size : Int,
   random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[() -> Result[String, NanoidError], NanoidError] {
-  // Use unified validation for all parameters
   match validate_all_parameters(alphabet, size, random) {
     Valid =>
       Ok(fn() -> Result[String, NanoidError] {
-        generate(alphabet, size, random)
+        generate_unchecked(alphabet, size, random)
       })
     InvalidAlphabet(error) => Err(error)
     InvalidSize(error) => Err(error)

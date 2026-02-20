@@ -66,14 +66,8 @@ priv enum ValidationResult {
 }
 
 ///|
-/// Validate alphabet parameter (with caching)
-fn validate_alphabet(alphabet : String) -> ValidationResult {
-  validate_alphabet_uncached(alphabet)
-}
-
-///|
-/// Internal alphabet validation without caching
-/// Optimized to perform validation in a single pass through the string
+/// Internal alphabet validation
+/// Performs validation in a single pass through the string
 fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
   // Use an immutable HashMap to efficiently check for duplicates and provide rich error messages.
   // The map stores the character and the index where it was first seen.
@@ -142,7 +136,7 @@ fn validate_random_function(
 ///|
 /// Validate both alphabet and size parameters
 fn validate_parameters(alphabet : String, size : Int) -> ValidationResult {
-  match validate_alphabet(alphabet) {
+  match validate_alphabet_uncached(alphabet) {
     Valid => validate_size(size)
     error => error
   }

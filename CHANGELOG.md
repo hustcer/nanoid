@@ -1,3 +1,23 @@
+## v0.3.0
+
+**⚠️ Breaking Changes:**
+
+- **Replaced custom xorshift64\* PRNG with MoonBit stdlib ChaCha8**: `@random.Rand::chacha8()` provides a well-tested, cryptographic-strength RNG from the standard library, replacing the hand-rolled xorshift64\* implementation
+
+**🚀 Performance:**
+
+- **Persistent global RNG**: Single `@random.Rand::chacha8()` instance reused across calls, eliminating per-call ChaCha8 initialization overhead
+- **Eliminated double validation**: `custom_alphabet`/`custom_random` closures call `generate_unchecked` directly, avoiding redundant parameter validation on each invocation
+- **Eliminated double alphabet lookup**: `generate_id_characters` now accepts `Array[Char]` + `Int` directly instead of re-looking up the alphabet from cache
+- **Simplified `calculate_mask`**: Removed `get_precomputed_mask` lookup table in favor of a simple bit-shift loop (at most 8 iterations for ≤256 alphabets)
+- **Single-pass `string_to_chars`**: Replaced two-pass count-then-fill with dynamic array `push`
+
+**✨ Improvements:**
+
+- **`derive(Show, Eq)` for `NanoidError`**: Enables direct comparison and debug printing of error values
+- **Cache safety**: `get_cached_alphabet_chars` now returns a copy to prevent callers from mutating cached data
+- **Unified error messages**: `to_string` now includes contextual guidance (e.g., "Please provide at least one character", "Use size=1 for single character IDs")
+
 ## v0.2.3
 
 **🐛 Bug Fixes:**

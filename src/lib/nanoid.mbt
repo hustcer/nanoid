@@ -74,7 +74,7 @@ priv enum ValidationResult {
 ///|
 /// Validate alphabet parameter (with caching)
 fn validate_alphabet(alphabet : String) -> ValidationResult {
-  get_cached_alphabet_validation(alphabet)
+  validate_alphabet_uncached(alphabet)
 }
 
 ///|
@@ -183,14 +183,6 @@ fn string_to_chars(s : String) -> Array[Char] {
   chars
 }
 
-///|
-/// Clear array contents to prevent sensitive data from remaining in memory
-fn secure_clear_bytes(bytes : Array[Int]) -> Unit {
-  for i = 0; i < bytes.length(); i = i + 1 {
-    bytes[i] = 0
-  }
-}
-
 // ========== Constants and Alphabets ==========
 
 ///|
@@ -243,25 +235,6 @@ fn increment_counter() -> (Int, Int) {
   let old_val = global_call_count.val
   global_call_count.val = old_val + 1
   (old_val, old_val + 1)
-}
-
-// ========== Alphabet Validation Cache ==========
-
-///|
-/// Get cached validation result or compute and cache it
-/// Currently just calls validate_alphabet_uncached directly
-fn get_cached_alphabet_validation(alphabet : String) -> ValidationResult {
-  validate_alphabet_uncached(alphabet)
-}
-
-// Performance utility functions removed - can be added back when needed
-
-///|
-/// Convert alphabet string to character array for efficient access
-/// Uses safe Unicode iteration to handle all characters correctly (including emoji, etc.)
-fn alphabet_to_chars(alphabet : String) -> Array[Char] {
-  // Use the helper function for safe Unicode conversion
-  string_to_chars(alphabet)
 }
 
 ///|
@@ -327,9 +300,6 @@ fn generate_id_characters(
       random_bytes, alphabet_chars, id_chars, counter, size, mask, alphabet_length,
     )
     batch_count = batch_count + 1
-
-    // Clear sensitive random bytes after use
-    secure_clear_bytes(random_bytes)
   }
 
   // Handle insufficient randomness case by returning an error
@@ -503,7 +473,7 @@ fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
       return cached_chars
     None => {
       // Cache miss: convert and then cache
-      let chars = alphabet_to_chars(alphabet)
+      let chars = string_to_chars(alphabet)
 
       // Only cache if the cache size is within the limit to prevent memory bloat
       if cache.length() < MAX_ALPHABET_CACHE_SIZE {

@@ -2,8 +2,6 @@
 package "hustcer/nanoid/lib"
 
 // Values
-fn alphabet_to_chars(String) -> Array[Char]
-
 let alphanumeric : String
 
 let base58 : String
@@ -47,8 +45,6 @@ let nolookalikes : String
 let nolookalikes_safe : String
 
 let numbers : String
-
-fn secure_clear_bytes(Array[Int]) -> Unit
 
 fn string_to_chars(String) -> Array[Char]
 

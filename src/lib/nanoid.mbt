@@ -16,24 +16,8 @@ pub enum NanoidError {
 } derive(Show, Eq)
 
 ///|
-/// Convert NanoidError to string representation
+/// Convert NanoidError to a human-readable string with helpful guidance
 pub fn NanoidError::to_string(self : NanoidError) -> String {
-  match self {
-    EmptyAlphabet => "Alphabet cannot be empty"
-    OversizedAlphabet(len) =>
-      "Alphabet length (\{len}) exceeds maximum of 256 characters"
-    DuplicateCharacter(char, first_pos, dup_pos) =>
-      "Duplicate character '\{char}' at position \{dup_pos}, first seen at \{first_pos}"
-    SizeTooSmall(size) => "Size (\{size}) must be greater than 0"
-    SizeTooLarge(size) =>
-      "Size (\{size}) exceeds maximum allowed size of 1,000,000"
-    RandomGenerationError(msg) => "Random generation failed: \{msg}"
-  }
-}
-
-///|
-/// Convert NanoidError to detailed string representation with helpful guidance
-pub fn NanoidError::to_string_detailed(self : NanoidError) -> String {
   match self {
     EmptyAlphabet =>
       "Alphabet cannot be empty. Please provide at least one character."
@@ -158,15 +142,9 @@ fn validate_all_parameters(
 ///|
 /// Helper function to convert string to character array using safe iteration
 fn string_to_chars(s : String) -> Array[Char] {
-  let mut count = 0
-  for _char in s {
-    count = count + 1
-  }
-  let chars = Array::make(count, ' ')
-  let mut i = 0
+  let chars : Array[Char] = []
   for char in s {
-    chars[i] = char
-    i = i + 1
+    chars.push(char)
   }
   chars
 }
@@ -400,15 +378,16 @@ let alphabet_char_cache : Ref[@immut/hashmap.HashMap[String, Array[Char]]] = {
 }
 
 ///|
-/// Get cached character array for alphabet, or convert and cache it
+/// Get cached character array for alphabet, or convert and cache it.
+/// Returns a copy to prevent callers from mutating the cached data.
 fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
   let cache = alphabet_char_cache.val
 
   // Check if alphabet is already cached using the map
   match cache.get(alphabet) {
     Some(cached_chars) =>
-      // Cache hit
-      return cached_chars
+      // Cache hit: return a copy to protect the cached data
+      return cached_chars.copy()
     None => {
       // Cache miss: convert and then cache
       let chars = string_to_chars(alphabet)

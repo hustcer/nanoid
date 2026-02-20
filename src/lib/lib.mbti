@@ -62,7 +62,6 @@ pub enum NanoidError {
   RandomGenerationError(String)
 }
 fn NanoidError::to_string(Self) -> String
-fn NanoidError::to_string_detailed(Self) -> String
 
 // Type aliases
 

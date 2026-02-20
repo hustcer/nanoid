@@ -288,16 +288,16 @@ test "error_message_quality" {
   let empty_result = custom_alphabet("", size=5)
   match empty_result {
     Err(error) => {
-      let detailed = error.to_string_detailed()
-      assert_true(detailed.contains("at least one character"))
+      let msg = error.to_string()
+      assert_true(msg.contains("at least one character"))
     }
     Ok(_) => assert_true(false) // Should not succeed
   }
   let negative_result = nanoid(size=-5)
   match negative_result {
     Err(error) => {
-      let detailed = error.to_string_detailed()
-      assert_true(detailed.contains("cannot be negative"))
+      let msg = error.to_string()
+      assert_true(msg.contains("cannot be negative"))
     }
     Ok(_) => assert_true(false) // Should not succeed
   }
@@ -450,7 +450,7 @@ test "duplicate_character_in_alphabet" {
   let result2 = custom_alphabet("XYZXY", size=5)
   match result2 {
     Err(error) => {
-      let detailed = error.to_string_detailed()
+      let detailed = error.to_string()
       assert_true(detailed.contains("must be unique"))
     }
     Ok(_) => assert_true(false)
@@ -480,7 +480,7 @@ test "error_type_coverage" {
   match custom_alphabet("", size=5) {
     Err(error) => {
       assert_true(error.to_string().contains("empty"))
-      assert_true(error.to_string_detailed().contains("at least one"))
+      assert_true(error.to_string().contains("at least one"))
     }
     Ok(_) => assert_true(false)
   }
@@ -489,20 +489,20 @@ test "error_type_coverage" {
   match custom_alphabet("ABCA", size=5) {
     Err(error) => {
       assert_true(error.to_string().contains("Duplicate"))
-      assert_true(error.to_string_detailed().contains("unique"))
+      assert_true(error.to_string().contains("unique"))
     }
     Ok(_) => assert_true(false)
   }
 
   // SizeTooSmall (negative)
   match nanoid(size=-5) {
-    Err(error) => assert_true(error.to_string_detailed().contains("negative"))
+    Err(error) => assert_true(error.to_string().contains("negative"))
     Ok(_) => assert_true(false)
   }
 
   // SizeTooSmall (zero)
   match nanoid(size=0) {
-    Err(error) => assert_true(error.to_string_detailed().contains("size=1"))
+    Err(error) => assert_true(error.to_string().contains("size=1"))
     Ok(_) => assert_true(false)
   }
 
@@ -510,7 +510,7 @@ test "error_type_coverage" {
   match nanoid(size=1000001) {
     Err(error) => {
       assert_true(error.to_string().contains("1000001"))
-      assert_true(error.to_string_detailed().contains("memory"))
+      assert_true(error.to_string().contains("memory"))
     }
     Ok(_) => assert_true(false)
   }

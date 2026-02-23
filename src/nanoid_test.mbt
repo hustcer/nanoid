@@ -370,6 +370,38 @@ test "custom_random_runtime_length_validation" {
 }
 
 ///|
+test "small_size_non_power_two_alphabet_does_not_false_fail" {
+  // Build a 129-char alphabet so acceptance probability is close to 1/2.
+  let mut alphabet = ""
+  for i = 0; i < 129; i = i + 1 {
+    alphabet = alphabet + Int::unsafe_to_char(1000 + i).to_string()
+  }
+
+  // First 6 bytes are rejected (>= 129 after mask), then one accepted byte (index 5).
+  // The previous batch limit logic stopped at 3 batches and failed before this success.
+  let scripted_bytes : Array[Int] = [200, 200, 200, 200, 200, 200, 5]
+  let cursor : Ref[Int] = { val: 0 }
+  let scripted_random = fn(size : Int) -> Result[Array[Int], NanoidError] {
+    let bytes = Array::make(size, 0)
+    for i = 0; i < size; i = i + 1 {
+      if cursor.val < scripted_bytes.length() {
+        bytes[i] = scripted_bytes[cursor.val]
+      } else {
+        bytes[i] = 5
+      }
+      cursor.val = cursor.val + 1
+    }
+    Ok(bytes)
+  }
+
+  let generator = custom_random(alphabet, 1, scripted_random).unwrap()
+  match generator() {
+    Ok(id) => assert_eq(id.get_char(0).unwrap(), Int::unsafe_to_char(1000 + 5))
+    Err(_) => assert_true(false)
+  }
+}
+
+///|
 test "insufficient_randomness_triggers_error" {
   // This test verifies that the "fail-fast" mechanism works when the
   // random byte generator consistently fails to provide usable values.

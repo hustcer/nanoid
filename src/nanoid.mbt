@@ -152,8 +152,10 @@ const MAX_ALPHABET_SIZE = 256
 const MAX_ID_SIZE = 1000000
 
 ///|
-/// Safety factor for batch generation attempts to prevent infinite loops
-const BATCH_GENERATION_SAFETY_FACTOR = 3
+/// Safety factor for random-byte budget before failing generation.
+/// A higher multiplier dramatically reduces false failures for small sizes while
+/// still providing a finite upper bound for pathological custom random functions.
+const BATCH_GENERATION_SAFETY_FACTOR = 8
 
 ///|
 /// Minimum batch size for random byte generation
@@ -198,7 +200,7 @@ fn generate_id_characters(
   let id_chars = Array::make(size, ' ')
   let mut counter = 0
   let mut batch_count = 0
-  let max_batches = (size / step + 1) * BATCH_GENERATION_SAFETY_FACTOR // Allow reasonable number of batches
+  let max_batches = calculate_max_batches(alphabet_length, size, step, mask)
 
   // Main generation loop with batch processing
   while counter < size && batch_count < max_batches {
@@ -325,6 +327,27 @@ fn calculate_optimal_batch_size(
     max_reasonable
   } else {
     optimized_step
+  }
+}
+
+///|
+/// Compute a finite batch budget based on expected random bytes needed.
+/// expected_bytes = ceil(size * (mask + 1) / alphabet_length)
+/// max_bytes = expected_bytes * safety_factor
+fn calculate_max_batches(
+  alphabet_length : Int,
+  target_size : Int,
+  step : Int,
+  mask : Int,
+) -> Int {
+  let expected_bytes = (target_size * (mask + 1) + alphabet_length - 1) /
+    alphabet_length
+  let max_bytes = expected_bytes * BATCH_GENERATION_SAFETY_FACTOR
+  let max_batches = (max_bytes + step - 1) / step
+  if max_batches < 1 {
+    1
+  } else {
+    max_batches
   }
 }
 

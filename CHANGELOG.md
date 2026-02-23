@@ -1,3 +1,27 @@
+## v0.5.0
+
+**⚠️ Breaking Changes:**
+
+- **Switched to single-package public API at `hustcer/nanoid`**: removed the legacy `hustcer/nanoid/lib` package layout and consolidated implementation/test files under `src/nanoid.mbt` and `src/nanoid_test.mbt`
+
+**🐛 Bug Fixes:**
+
+- **Hardened `custom_random` runtime validation**: now validates custom random byte array length on every request (not just setup), with detailed `expected X, got Y` error messages
+- **Fixed `custom_random` probe side effects**: validation probe byte is replayed into first generation call so setup checks no longer consume user-provided random state
+- **Fixed false generation failures for small non-power-of-two alphabets**: replaced simplistic batch cap with expected-byte based batch budgeting to avoid premature `Failed to generate sufficient random characters` errors
+- **Runtime-seeded default RNG**: default ChaCha8 seed now derives from runtime process context (`time/args/cwd`) to avoid identical startup sequences across processes
+
+**✨ Improvements:**
+
+- **Root package import is now first-class**: API is exposed directly from `hustcer/nanoid`, simplifying integration and matching README examples
+- **Demo moved to dedicated subpackage**: executable demo relocated to `src/demo/top.mbt` with its own package metadata for cleaner library/demo separation
+- **Refactored replay-random pipeline**: split `create_replay_random` flow into smaller helpers for easier maintenance while preserving behavior
+- **Documentation updated for new package path and RNG model**: README now reflects root import usage, thread-safety note, and non-cryptographic entropy caveat
+
+**🧹 Maintenance:**
+
+- **Repository housekeeping**: updated and then removed agent instruction files (`AGENTS.md`) with no runtime/API impact on the nanoid library
+
 ## v0.3.0
 
 **⚠️ Breaking Changes:**

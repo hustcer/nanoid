@@ -1,3 +1,8 @@
 import {
-  "hustcer/nanoid/lib" @nid,
+  "moonbitlang/core/immut/hashmap" @immut/hashmap,
+  "moonbitlang/core/random" @random,
 }
+
+options(
+  deps: { "moonbitlang/core": "*" },
+)

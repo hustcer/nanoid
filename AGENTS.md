@@ -3,11 +3,10 @@
 ## Project Structure & Module Organization
 This repository is a MoonBit module (`moon.mod.json`) with source rooted at `src/`.
 
-- `src/lib/nanoid.mbt`: main library implementation and public API.
-- `src/lib/nanoid_test.mbt`: black-box tests for library behavior and edge cases.
-- `src/nanoid.mbt`: facade API so users can import `hustcer/nanoid` directly.
+- `src/nanoid.mbt`: main library implementation and public API.
+- `src/nanoid_test.mbt`: black-box tests for library behavior and edge cases.
 - `src/demo/top.mbt`: demo executable entrypoint.
-- `src/moon.pkg`, `src/lib/moon.pkg`, `src/demo/moon.pkg`: package boundaries and imports.
+- `src/moon.pkg`, `src/demo/moon.pkg`: package boundaries and imports.
 - `_build/` and `target/`: generated build artifacts (do not edit manually).
 
 Keep new code package-local and organized by feature. In MoonBit, file names are organizational only; package paths come from module/package metadata, not file names.
@@ -20,7 +19,7 @@ Keep new code package-local and organized by feature. In MoonBit, file names are
 - `moon info`: regenerate/check `pkg.generated.mbti` interface snapshots when public APIs change.
 
 ## Coding Style & Naming Conventions
-Follow existing MoonBit style in `src/lib/nanoid.mbt`:
+Follow existing MoonBit style in `src/nanoid.mbt`:
 
 - Use 2-space indentation and keep blocks readable with `///|` section delimiters.
 - Prefer `snake_case` for function names and local variables.
@@ -29,7 +28,7 @@ Follow existing MoonBit style in `src/lib/nanoid.mbt`:
 - Run `moon fmt` for all formatting decisions.
 
 ## Testing Guidelines
-- Add tests in `*_test.mbt` files, usually beside the package they verify (for example, `src/lib/nanoid_test.mbt`).
+- Add tests in `*_test.mbt` files, usually beside the package they verify (for example, `src/nanoid_test.mbt`).
 - Name tests descriptively with snake_case strings: `test "edge_cases_and_boundaries"`.
 - Cover happy paths, invalid inputs, boundary limits, and Unicode behavior.
 - Run `moon test --target all` locally before opening a PR.

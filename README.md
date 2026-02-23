@@ -39,8 +39,6 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
    }
    ```
 
-   Legacy path `hustcer/nanoid/lib` remains available for backward compatibility.
-
 ### Basic Usage
 
 ```moonbit

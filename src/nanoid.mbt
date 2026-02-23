@@ -172,10 +172,54 @@ const MAX_BATCH_SIZE = 256
 /// Using a single instance avoids per-call initialization overhead and lets
 /// the internal state advance naturally, producing a longer non-repeating sequence.
 ///
-/// Note: MoonBit currently lacks a system entropy API, so the seed is fixed.
-/// All ID sequences are deterministic across program runs.
+/// Seed is derived at runtime from process context (time/args/cwd), so
+/// sequences are no longer fixed across process runs.
+/// Note: this is still not a cryptographic entropy source.
 /// WARNING: This RNG is NOT thread-safe.
-let global_rng : @random.Rand = @random.Rand::chacha8()
+let global_rng : @random.Rand = @random.Rand::chacha8(seed=build_runtime_seed())
+
+///|
+/// Mix a UInt64 value (xorshift-style) for seed derivation.
+fn mix_seed_state(state : UInt64) -> UInt64 {
+  let mut mixed = state
+  mixed = mixed ^ (mixed << 13)
+  mixed = mixed ^ (mixed >> 7)
+  mixed = mixed ^ (mixed << 17)
+  mixed
+}
+
+///|
+/// Fold a string into seed state to add process-specific variability.
+fn absorb_seed_string(state : UInt64, value : String) -> UInt64 {
+  let mut mixed = state
+  for char in value {
+    mixed = mix_seed_state(mixed + char.to_int().to_uint64())
+  }
+  mixed
+}
+
+///|
+/// Build a 32-byte seed from runtime process context.
+fn build_runtime_seed() -> Bytes {
+  let mut state = @env.now()
+  for arg in @env.args() {
+    state = absorb_seed_string(state, arg)
+  }
+  match @env.current_dir() {
+    Some(cwd) => state = absorb_seed_string(state, cwd)
+    None => ()
+  }
+  if state == UInt64::default() {
+    state = Int::to_uint64(1)
+  }
+
+  let seed_bytes : Array[Byte] = Array::make(32, 0)
+  for i = 0; i < 32; i = i + 1 {
+    state = mix_seed_state(state + Int::to_uint64(i + 1))
+    seed_bytes[i] = state.to_byte()
+  }
+  Bytes::from_array(seed_bytes)
+}
 
 ///|
 /// Calculate mask for uniform distribution (power of 2 - 1)

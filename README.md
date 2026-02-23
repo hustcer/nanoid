@@ -15,9 +15,9 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 - **Error Safe**: Proper error handling with `Result` types instead of runtime panics
 - **Type Safe**: Full MoonBit type system support with `derive(Show, Eq)` on error types
 - **Zero Dependencies**: No external dependencies beyond MoonBit core
-- **Deterministic by Default**: Reproducible output sequence unless you inject external entropy via `custom_random`
+- **Runtime-Seeded by Default**: Default RNG seed is derived from runtime context to avoid fixed cross-process sequences
 
-> **Note**: MoonBit currently lacks a system entropy API, so the default ChaCha8 RNG uses a deterministic seed. All ID sequences are reproducible across program runs. For production scenarios that require non-deterministic IDs, pass a custom entropy source via `custom_random`.  
+> **Note**: MoonBit currently lacks a system entropy API. This library derives the default ChaCha8 seed from runtime process context (`time/args/cwd`) to avoid a fixed startup sequence, but this is still **not** cryptographic entropy. For security-sensitive IDs/tokens, pass a stronger entropy source via `custom_random`.  
 > **Thread safety**: The default global RNG is not thread-safe.
 
 ## Quick Start

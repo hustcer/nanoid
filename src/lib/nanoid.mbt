@@ -339,57 +339,79 @@ fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
 }
 
 ///|
+/// Request exact number of bytes from a custom random function.
+fn request_random_exact(
+  random : (Int) -> Result[Array[Int], NanoidError],
+  size : Int,
+) -> Result[Array[Int], NanoidError] {
+  match random(size) {
+    Ok(bytes) => validate_random_output_size(bytes, size)
+    Err(e) => Err(e)
+  }
+}
+
+///|
+/// Prepend a probe byte to the remaining random bytes.
+fn prepend_probe_byte(first_byte : Int, rest_bytes : Array[Int]) -> Array[Int] {
+  let merged_bytes = Array::make(rest_bytes.length() + 1, 0)
+  merged_bytes[0] = first_byte
+  for i = 0; i < rest_bytes.length(); i = i + 1 {
+    merged_bytes[i + 1] = rest_bytes[i]
+  }
+  merged_bytes
+}
+
+///|
+/// Try to build random bytes from the cached probe byte.
+fn generate_with_probe_byte(
+  random : (Int) -> Result[Array[Int], NanoidError],
+  probe_byte : Ref[Int?],
+  first_byte : Int,
+  request_size : Int,
+) -> Result[Array[Int], NanoidError] {
+  if request_size == 1 {
+    probe_byte.val = None
+    return Ok([first_byte])
+  }
+  match request_random_exact(random, request_size - 1) {
+    Ok(valid_rest_bytes) => {
+      probe_byte.val = None
+      Ok(prepend_probe_byte(first_byte, valid_rest_bytes))
+    }
+    Err(e) => Err(e)
+  }
+}
+
+///|
+/// Generate random bytes, consuming probe byte first when available.
+fn generate_replay_random_bytes(
+  random : (Int) -> Result[Array[Int], NanoidError],
+  probe_byte : Ref[Int?],
+  request_size : Int,
+) -> Result[Array[Int], NanoidError] {
+  if request_size <= 0 {
+    return Ok([])
+  }
+  match probe_byte.val {
+    Some(first_byte) =>
+      generate_with_probe_byte(random, probe_byte, first_byte, request_size)
+    None => request_random_exact(random, request_size)
+  }
+}
+
+///|
 /// Wrap a custom random function and replay the probe byte so validation does not
 /// consume random state from the first generated ID.
 fn create_replay_random(
   random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[(Int) -> Result[Array[Int], NanoidError], NanoidError] {
-  match random(1) {
-    Ok(test_bytes) =>
-      match validate_random_output_size(test_bytes, 1) {
-        Ok(valid_test_bytes) => {
-          let probe_byte : Ref[Int?] = { val: Some(valid_test_bytes[0]) }
-          Ok(fn(request_size : Int) -> Result[Array[Int], NanoidError] {
-            if request_size <= 0 {
-              return Ok([])
-            }
-            match probe_byte.val {
-              Some(first_byte) =>
-                if request_size == 1 {
-                  probe_byte.val = None
-                  Ok([first_byte])
-                } else {
-                  match random(request_size - 1) {
-                    Ok(rest_bytes) =>
-                      match
-                        validate_random_output_size(
-                          rest_bytes,
-                          request_size - 1,
-                        ) {
-                        Ok(valid_rest_bytes) => {
-                          let merged_bytes = Array::make(request_size, 0)
-                          merged_bytes[0] = first_byte
-                          for i = 0; i < valid_rest_bytes.length(); i = i + 1 {
-                            merged_bytes[i + 1] = valid_rest_bytes[i]
-                          }
-                          probe_byte.val = None
-                          Ok(merged_bytes)
-                        }
-                        Err(e) => Err(e)
-                      }
-                    Err(e) => Err(e)
-                  }
-                }
-              None =>
-                match random(request_size) {
-                  Ok(bytes) => validate_random_output_size(bytes, request_size)
-                  Err(e) => Err(e)
-                }
-            }
-          })
-        }
-        Err(e) => Err(e)
-      }
+  match request_random_exact(random, 1) {
+    Ok(valid_test_bytes) => {
+      let probe_byte : Ref[Int?] = { val: Some(valid_test_bytes[0]) }
+      Ok(fn(request_size : Int) -> Result[Array[Int], NanoidError] {
+        generate_replay_random_bytes(random, probe_byte, request_size)
+      })
+    }
     Err(e) => Err(e)
   }
 }

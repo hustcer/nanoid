@@ -277,9 +277,13 @@ test "edge_cases_and_boundaries" {
   assert_true(result_large is Ok(_))
 
   // Test alphabet just over limit
-  let oversized_alphabet = large_alphabet + "X"
+  let oversized_alphabet = large_alphabet + "😀"
   let result_oversized = custom_alphabet(oversized_alphabet, size=5)
-  assert_true(result_oversized is Err(_))
+  match result_oversized {
+    Err(NanoidError::OversizedAlphabet(len)) => assert_eq(len, 257)
+    Err(_) => assert_true(false)
+    Ok(_) => assert_true(false)
+  }
 }
 
 ///|
@@ -318,6 +322,51 @@ test "custom_random_validation" {
   }
   let result_invalid = custom_random("ABC", 5, invalid_random)
   assert_true(result_invalid is Err(_))
+}
+
+///|
+test "custom_random_probe_does_not_consume_state" {
+  // Build a 256-char alphabet so byte values map directly to character indices.
+  let mut full_alphabet = ""
+  for i = 0; i < 256; i = i + 1 {
+    full_alphabet = full_alphabet + Int::unsafe_to_char(33 + i).to_string()
+  }
+  let counter : Ref[Int] = { val: 0 }
+  let deterministic_random = fn(size : Int) -> Result[Array[Int], NanoidError] {
+    let bytes = Array::make(size, 0)
+    for i = 0; i < size; i = i + 1 {
+      bytes[i] = counter.val
+      counter.val = counter.val + 1
+    }
+    Ok(bytes)
+  }
+  let generator = custom_random(full_alphabet, 4, deterministic_random).unwrap()
+  let id = generator().unwrap()
+  assert_eq(id.get_char(0).unwrap(), Int::unsafe_to_char(33))
+  assert_eq(counter.val, 8)
+}
+
+///|
+test "custom_random_runtime_length_validation" {
+  // Probe call passes (size=1), runtime call fails with mismatched batch size.
+  let mismatched_random = fn(size : Int) -> Result[Array[Int], NanoidError] {
+    if size == 1 {
+      Ok([42])
+    } else {
+      Ok(Array::make(size - 1, 42))
+    }
+  }
+  let generator_result = custom_random("ABC", 5, mismatched_random)
+  assert_true(generator_result is Ok(_))
+  let generator = generator_result.unwrap()
+  match generator() {
+    Err(error) => {
+      let msg = error.to_string()
+      assert_true(msg.contains("expected"))
+      assert_true(msg.contains("got"))
+    }
+    Ok(_) => assert_true(false)
+  }
 }
 
 ///|

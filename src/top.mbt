@@ -78,13 +78,13 @@ fn main {
 
   // Test oversized alphabet
   let mut long_alphabet = ""
-  for i = 0; i < 300; i = i + 1 {
-    long_alphabet = long_alphabet + "A"
+  for i = 0; i < 257; i = i + 1 {
+    long_alphabet = long_alphabet + Int::unsafe_to_char(1000 + i).to_string()
   }
   match @nid.custom_alphabet(long_alphabet, size=5) {
     Ok(_) => println("Unexpected success with oversized alphabet")
     Err(e) =>
-      println("Oversized alphabet (300 chars) → Error: \{e.to_string()}")
+      println("Oversized alphabet (257 chars) → Error: \{e.to_string()}")
   }
 
   // Test duplicate characters in alphabet

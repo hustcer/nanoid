@@ -1,5 +1,5 @@
 ///| MoonBit port of Nano ID library
-/// A tiny, secure, URL-friendly, unique string ID generator
+/// A tiny, URL-friendly, unique string ID generator
 /// MoonBit implementation compatible with the official nanoid JavaScript library
 
 // ========== Error Handling ==========
@@ -46,7 +46,6 @@ priv enum ValidationResult {
   Valid
   InvalidAlphabet(NanoidError)
   InvalidSize(NanoidError)
-  InvalidRandom(NanoidError)
 }
 
 ///|
@@ -97,24 +96,19 @@ fn validate_size(size : Int) -> ValidationResult {
 }
 
 ///|
-/// Validate random function parameter
-fn validate_random_function(
-  random : (Int) -> Result[Array[Int], NanoidError],
-) -> ValidationResult {
-  // Test the random function with a small sample to catch issues early
-  match random(1) {
-    Ok(test_bytes) =>
-      if test_bytes.length() != 1 {
-        return InvalidRandom(
-          RandomGenerationError(
-            "Custom random function returned incorrect array length",
-          ),
-        )
-      } else {
-        Valid
-      }
-    Err(e) => InvalidRandom(e)
+/// Validate random byte count and return a detailed error when mismatch happens
+fn validate_random_output_size(
+  bytes : Array[Int],
+  expected_size : Int,
+) -> Result[Array[Int], NanoidError] {
+  if bytes.length() != expected_size {
+    return Err(
+      RandomGenerationError(
+        "Custom random function returned incorrect array length: expected \{expected_size}, got \{bytes.length()}",
+      ),
+    )
   }
+  Ok(bytes)
 }
 
 ///|
@@ -122,19 +116,6 @@ fn validate_random_function(
 fn validate_parameters(alphabet : String, size : Int) -> ValidationResult {
   match validate_alphabet_uncached(alphabet) {
     Valid => validate_size(size)
-    error => error
-  }
-}
-
-///|
-/// Validate alphabet, size, and random function parameters
-fn validate_all_parameters(
-  alphabet : String,
-  size : Int,
-  random : (Int) -> Result[Array[Int], NanoidError],
-) -> ValidationResult {
-  match validate_parameters(alphabet, size) {
-    Valid => validate_random_function(random)
     error => error
   }
 }
@@ -222,7 +203,11 @@ fn generate_id_characters(
   // Main generation loop with batch processing
   while counter < size && batch_count < max_batches {
     let random_bytes = match get_random(step) {
-      Ok(bytes) => bytes
+      Ok(bytes) =>
+        match validate_random_output_size(bytes, step) {
+          Ok(valid_bytes) => valid_bytes
+          Err(e) => return Err(e)
+        }
       Err(e) => return Err(e)
     }
 
@@ -344,42 +329,6 @@ fn calculate_optimal_batch_size(
 }
 
 ///|
-/// Maximum number of alphabets to store in the cache.
-const MAX_ALPHABET_CACHE_SIZE = 16
-
-///|
-/// Simple alphabet cache to avoid repeated conversions
-/// Note: This is a basic implementation. In production, consider using a proper LRU cache
-let alphabet_char_cache : Ref[@immut/hashmap.HashMap[String, Array[Char]]] = {
-  val: @immut/hashmap.new(),
-}
-
-///|
-/// Get cached character array for alphabet, or convert and cache it.
-/// Returns a copy to prevent callers from mutating the cached data.
-fn get_cached_alphabet_chars(alphabet : String) -> Array[Char] {
-  let cache = alphabet_char_cache.val
-
-  // Check if alphabet is already cached using the map
-  match cache.get(alphabet) {
-    Some(cached_chars) =>
-      // Cache hit: return a copy to protect the cached data
-      return cached_chars.copy()
-    None => {
-      // Cache miss: convert and then cache
-      let chars = string_to_chars(alphabet)
-
-      // Only cache if the cache size is within the limit to prevent memory bloat
-      if cache.length() < MAX_ALPHABET_CACHE_SIZE {
-        let new_cache = cache.add(alphabet, chars)
-        alphabet_char_cache.val = new_cache
-      }
-      return chars
-    }
-  }
-}
-
-///|
 /// Generate random bytes from the global ChaCha8 RNG
 fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
   let bytes = Array::make(size, 0)
@@ -390,13 +339,68 @@ fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
 }
 
 ///|
-/// Internal generation without validation (caller must validate first)
-fn generate_unchecked(
-  alphabet : String,
+/// Wrap a custom random function and replay the probe byte so validation does not
+/// consume random state from the first generated ID.
+fn create_replay_random(
+  random : (Int) -> Result[Array[Int], NanoidError],
+) -> Result[(Int) -> Result[Array[Int], NanoidError], NanoidError] {
+  match random(1) {
+    Ok(test_bytes) =>
+      match validate_random_output_size(test_bytes, 1) {
+        Ok(valid_test_bytes) => {
+          let probe_byte : Ref[Int?] = { val: Some(valid_test_bytes[0]) }
+          Ok(fn(request_size : Int) -> Result[Array[Int], NanoidError] {
+            if request_size <= 0 {
+              return Ok([])
+            }
+            match probe_byte.val {
+              Some(first_byte) =>
+                if request_size == 1 {
+                  probe_byte.val = None
+                  Ok([first_byte])
+                } else {
+                  match random(request_size - 1) {
+                    Ok(rest_bytes) =>
+                      match
+                        validate_random_output_size(
+                          rest_bytes,
+                          request_size - 1,
+                        ) {
+                        Ok(valid_rest_bytes) => {
+                          let merged_bytes = Array::make(request_size, 0)
+                          merged_bytes[0] = first_byte
+                          for i = 0; i < valid_rest_bytes.length(); i = i + 1 {
+                            merged_bytes[i + 1] = valid_rest_bytes[i]
+                          }
+                          probe_byte.val = None
+                          Ok(merged_bytes)
+                        }
+                        Err(e) => Err(e)
+                      }
+                    Err(e) => Err(e)
+                  }
+                }
+              None =>
+                match random(request_size) {
+                  Ok(bytes) => validate_random_output_size(bytes, request_size)
+                  Err(e) => Err(e)
+                }
+            }
+          })
+        }
+        Err(e) => Err(e)
+      }
+    Err(e) => Err(e)
+  }
+}
+
+///|
+/// Internal generation without validation using precomputed alphabet characters
+fn generate_unchecked_with_alphabet_chars(
+  alphabet_chars : Array[Char],
   size : Int,
   get_random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[String, NanoidError] {
-  let alphabet_chars = get_cached_alphabet_chars(alphabet)
   let alphabet_length = alphabet_chars.length()
 
   // Special case: single character alphabet - no randomness needed
@@ -412,6 +416,20 @@ fn generate_unchecked(
 }
 
 ///|
+/// Internal generation without validation (caller must validate first)
+fn generate_unchecked(
+  alphabet : String,
+  size : Int,
+  get_random : (Int) -> Result[Array[Int], NanoidError],
+) -> Result[String, NanoidError] {
+  generate_unchecked_with_alphabet_chars(
+    string_to_chars(alphabet),
+    size,
+    get_random,
+  )
+}
+
+///|
 /// Generate ID with validation
 fn generate(
   alphabet : String,
@@ -422,13 +440,12 @@ fn generate(
     Valid => generate_unchecked(alphabet, size, get_random)
     InvalidAlphabet(error) => Err(error)
     InvalidSize(error) => Err(error)
-    InvalidRandom(error) => Err(error)
   }
 }
 
 ///|
 /// Main nanoid function - generates URL-friendly unique ID
-/// Generates secure random IDs using the default URL-safe alphabet
+/// Generates random IDs using the default URL-safe alphabet
 /// Returns Result with ID string or NanoidError for invalid parameters
 /// Usage: nanoid() generates 21-character ID, nanoid(size=10) generates 10-character ID
 pub fn nanoid(size? : Int = DEFAULT_SIZE) -> Result[String, NanoidError] {
@@ -455,13 +472,16 @@ pub fn custom_alphabet(
   size? : Int = DEFAULT_SIZE,
 ) -> Result[() -> Result[String, NanoidError], NanoidError] {
   match validate_parameters(alphabet, size) {
-    Valid =>
+    Valid => {
+      let alphabet_chars = string_to_chars(alphabet)
       Ok(fn() -> Result[String, NanoidError] {
-        generate_unchecked(alphabet, size, get_random_bytes)
+        generate_unchecked_with_alphabet_chars(
+          alphabet_chars, size, get_random_bytes,
+        )
       })
+    }
     InvalidAlphabet(error) => Err(error)
     InvalidSize(error) => Err(error)
-    InvalidRandom(error) => Err(error)
   }
 }
 
@@ -494,14 +514,21 @@ pub fn custom_random(
   size : Int,
   random : (Int) -> Result[Array[Int], NanoidError],
 ) -> Result[() -> Result[String, NanoidError], NanoidError] {
-  match validate_all_parameters(alphabet, size, random) {
-    Valid =>
-      Ok(fn() -> Result[String, NanoidError] {
-        generate_unchecked(alphabet, size, random)
-      })
+  match validate_parameters(alphabet, size) {
+    Valid => {
+      let alphabet_chars = string_to_chars(alphabet)
+      match create_replay_random(random) {
+        Ok(replay_random) =>
+          Ok(fn() -> Result[String, NanoidError] {
+            generate_unchecked_with_alphabet_chars(
+              alphabet_chars, size, replay_random,
+            )
+          })
+        Err(e) => Err(e)
+      }
+    }
     InvalidAlphabet(error) => Err(error)
     InvalidSize(error) => Err(error)
-    InvalidRandom(error) => Err(error)
   }
 }
 

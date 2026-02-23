@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A tiny, secure, URL-friendly, unique string ID generator for [MoonBit](https://moonbitlang.com/).
+A tiny, URL-friendly, unique string ID generator for [MoonBit](https://moonbitlang.com/).
 
 This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) JavaScript library, maintaining API compatibility while providing excellent error handling through MoonBit's robust type system.
 
@@ -15,8 +15,9 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 - **Error Safe**: Proper error handling with `Result` types instead of runtime panics
 - **Type Safe**: Full MoonBit type system support with `derive(Show, Eq)` on error types
 - **Zero Dependencies**: No external dependencies beyond MoonBit core
+- **Deterministic by Default**: Reproducible output sequence unless you inject external entropy via `custom_random`
 
-> **Note**: MoonBit currently lacks a system entropy API, so the ChaCha8 RNG uses a deterministic seed. All ID sequences are reproducible across program runs. This will be resolved when MoonBit adds system entropy support.
+> **Note**: MoonBit currently lacks a system entropy API, so the default ChaCha8 RNG uses a deterministic seed. All ID sequences are reproducible across program runs. For production scenarios that require non-deterministic IDs, pass a custom entropy source via `custom_random`.
 
 ## Quick Start
 

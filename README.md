@@ -2,9 +2,9 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A tiny, URL-friendly, unique string ID generator for [MoonBit](https://moonbitlang.com/).
+A tiny, URL-friendly ID generator for [MoonBit](https://moonbitlang.com/).
 
-This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) JavaScript library, maintaining API compatibility while providing excellent error handling through MoonBit's robust type system.
+This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) JavaScript library, preserving the core algorithm and behavior while providing MoonBit-idiomatic `Result`-based error handling.
 
 ## Features
 
@@ -17,7 +17,8 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 - **Zero Dependencies**: No external dependencies beyond MoonBit core
 - **Deterministic by Default**: Reproducible output sequence unless you inject external entropy via `custom_random`
 
-> **Note**: MoonBit currently lacks a system entropy API, so the default ChaCha8 RNG uses a deterministic seed. All ID sequences are reproducible across program runs. For production scenarios that require non-deterministic IDs, pass a custom entropy source via `custom_random`.
+> **Note**: MoonBit currently lacks a system entropy API, so the default ChaCha8 RNG uses a deterministic seed. All ID sequences are reproducible across program runs. For production scenarios that require non-deterministic IDs, pass a custom entropy source via `custom_random`.  
+> **Thread safety**: The default global RNG is not thread-safe.
 
 ## Quick Start
 
@@ -28,7 +29,7 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
    moon add hustcer/nanoid
    ```
 
-2. Import `hustcer/nanoid` package where you need it.
+2. Import `hustcer/nanoid/lib` package where you need it.
 
    ```json
    {
@@ -154,6 +155,15 @@ Creates a generator with custom alphabet and random function.
 - `size`: Length for generated IDs (must be positive)
 - `random`: Custom random byte generator function that returns Result
 - Returns: `Ok(generator)` or `Err(NanoidError)` for invalid parameters
+
+#### `custom_random_or_empty(alphabet : String, size : Int, random : (Int) -> Array[Int]) -> () -> String`
+
+Convenience function that returns empty string on error (for backward compatibility).
+
+- `alphabet`: String containing unique characters to use (1-256 characters, no duplicates)
+- `size`: Length for generated IDs (must be positive)
+- `random`: Custom random byte generator function
+- Returns: A generator function that returns string or empty string on error
 
 ## Error Handling
 

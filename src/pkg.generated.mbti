@@ -1,13 +1,55 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "hustcer/nanoid"
 
+import {
+  "hustcer/nanoid/lib",
+}
+
 // Values
+pub let alphanumeric : String
+
+pub let base58 : String
+
+pub let base62 : String
+
+pub fn custom_alphabet(String, size? : Int) -> Result[() -> Result[String, @lib.NanoidError], @lib.NanoidError]
+
+pub fn custom_alphabet_or_empty(String, size? : Int) -> () -> String
+
+pub fn custom_random(String, Int, (Int) -> Result[Array[Int], @lib.NanoidError]) -> Result[() -> Result[String, @lib.NanoidError], @lib.NanoidError]
+
+pub fn custom_random_or_empty(String, Int, (Int) -> Array[Int]) -> () -> String
+
+pub let filename_safe : String
+
+pub let hex : String
+
+pub let hex_upper : String
+
+pub let lowercase : String
+
+pub fn nanoid(size? : Int) -> Result[String, @lib.NanoidError]
+
+pub fn nanoid_or_empty(size? : Int) -> String
+
+pub let nolookalikes : String
+
+pub let nolookalikes_safe : String
+
+pub let numbers : String
+
+pub let uppercase : String
+
+pub let url_alphabet : String
+
+pub let url_safe : String
 
 // Errors
 
 // Types and methods
 
 // Type aliases
+pub using @lib {type NanoidError}
 
 // Traits
 

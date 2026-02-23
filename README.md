@@ -29,15 +29,17 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
    moon add hustcer/nanoid
    ```
 
-2. Import `hustcer/nanoid/lib` package where you need it.
+2. Import `hustcer/nanoid` package where you need it.
 
    ```json
    {
-     "import": [
-        { "path": "hustcer/nanoid/lib", "alias": "nanoid" }
+      "import": [
+        { "path": "hustcer/nanoid", "alias": "nanoid" }
       ]
    }
    ```
+
+   Legacy path `hustcer/nanoid/lib` remains available for backward compatibility.
 
 ### Basic Usage
 

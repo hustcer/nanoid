@@ -1,7 +1,3 @@
 import {
   "hustcer/nanoid/lib" @nid,
 }
-
-options(
-  "is-main": true,
-)

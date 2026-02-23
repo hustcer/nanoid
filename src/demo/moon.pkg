@@ -1,0 +1,7 @@
+import {
+  "hustcer/nanoid" @nid,
+}
+
+options(
+  "is-main": true,
+)

@@ -5,8 +5,9 @@ This repository is a MoonBit module (`moon.mod.json`) with source rooted at `src
 
 - `src/lib/nanoid.mbt`: main library implementation and public API.
 - `src/lib/nanoid_test.mbt`: black-box tests for library behavior and edge cases.
-- `src/top.mbt`: demo executable entrypoint.
-- `src/moon.pkg`, `src/lib/moon.pkg`: package boundaries and imports.
+- `src/nanoid.mbt`: facade API so users can import `hustcer/nanoid` directly.
+- `src/demo/top.mbt`: demo executable entrypoint.
+- `src/moon.pkg`, `src/lib/moon.pkg`, `src/demo/moon.pkg`: package boundaries and imports.
 - `_build/` and `target/`: generated build artifacts (do not edit manually).
 
 Keep new code package-local and organized by feature. In MoonBit, file names are organizational only; package paths come from module/package metadata, not file names.
@@ -14,7 +15,7 @@ Keep new code package-local and organized by feature. In MoonBit, file names are
 ## Build, Test, and Development Commands
 - `moon check --target all`: fast type-check across all backends.
 - `moon test --target all`: run the full test suite (same core check used in CI).
-- `moon run src`: run the demo app in `src/top.mbt`.
+- `moon run src/demo`: run the demo app in `src/demo/top.mbt`.
 - `moon fmt`: apply canonical formatting before committing.
 - `moon info`: regenerate/check `pkg.generated.mbti` interface snapshots when public APIs change.
 

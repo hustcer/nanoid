@@ -1,6 +1,8 @@
+skills-lock.json
 target
 _build/
 .mooncakes/
 .moonagent/
 .DS_Store
 .env
+.agents/

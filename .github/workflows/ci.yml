@@ -31,6 +31,8 @@ jobs:
       - name: Check Nanoid Generation
         run: |
           moon version --all
+          moon check --target all
+          moon build --target all
           moon test --target all
           moon run src/demo
 

@@ -1,3 +1,16 @@
+## v0.5.1
+
+**🐛 Bug Fixes:**
+
+- **Custom random byte range validation**: each byte returned by a custom random function is now checked to be in `0..255`, with an error message including the offending index and value
+- **Single-character alphabet skips random probe**: `custom_random` no longer calls the random function at all (including the setup probe) when the alphabet has exactly one character
+- **`NanoidError` derives `Debug` instead of `Show`**: removes the deprecated-`Show` compiler warning
+
+**✨ Improvements:**
+
+- **README entropy note**: clarified that the MoonBit `@random` default constructor is not OS-backed; updated recommendation to use `custom_random` with an OS entropy source for security-sensitive IDs
+- **CI**: added dedicated build and check steps
+
 ## v0.5.0
 
 **⚠️ Breaking Changes:**

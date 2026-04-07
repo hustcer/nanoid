@@ -13,7 +13,7 @@ pub enum NanoidError {
   SizeTooSmall(Int)
   SizeTooLarge(Int)
   RandomGenerationError(String)
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 /// Convert NanoidError to a human-readable string with helpful guidance

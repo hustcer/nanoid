@@ -13,7 +13,7 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 - **Customizable**: Support for custom alphabets and ID sizes
 - **Unicode Support**: Full support for Unicode alphabets including emoji and CJK characters
 - **Error Safe**: Proper error handling with `Result` types instead of runtime panics
-- **Type Safe**: Full MoonBit type system support with `derive(Show, Eq)` on error types
+- **Type Safe**: Full MoonBit type system support with `Debug` and `Eq` on error types
 - **Zero Dependencies**: No external dependencies beyond MoonBit core
 - **Runtime-Seeded by Default**: Default RNG seed is derived from runtime context to avoid fixed cross-process sequences
 
@@ -153,8 +153,8 @@ Creates a generator with custom alphabet and random function.
 
 - `alphabet`: String containing unique characters to use (1-256 characters, no duplicates)
 - `size`: Length for generated IDs (must be positive)
-- `random`: Custom random byte generator function that returns Result
-- Returns: `Ok(generator)` or `Err(NanoidError)` for invalid parameters
+- `random`: Custom random byte generator function that returns `Result`; it is probed once during setup with `size=1`, and every call must return exactly the requested number of bytes
+- Returns: `Ok(generator)` or `Err(NanoidError)` for invalid parameters or invalid custom-random behavior during setup
 
 #### `custom_random_or_empty(alphabet : String, size : Int, random : (Int) -> Array[Int]) -> () -> String`
 
@@ -162,8 +162,8 @@ Convenience function that returns empty string on error (for backward compatibil
 
 - `alphabet`: String containing unique characters to use (1-256 characters, no duplicates)
 - `size`: Length for generated IDs (must be positive)
-- `random`: Custom random byte generator function
-- Returns: A generator function that returns string or empty string on error
+- `random`: Custom random byte generator function; it is validated once during setup with `size=1`, and every call should return exactly the requested number of bytes
+- Returns: A generator function that returns string or empty string on setup or generation error
 
 ## Error Handling
 
@@ -177,7 +177,7 @@ pub enum NanoidError {
   SizeTooSmall(Int)                // Size must be greater than 0
   SizeTooLarge(Int)                // Size exceeds maximum allowed (1,000,000)
   RandomGenerationError(String)    // Random number generation failed
-} derive(Show, Eq)
+} derive(Debug, Eq)
 ```
 
 ### Error Handling Examples
@@ -230,8 +230,8 @@ Based on [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary), we p
 | `nolookalikes_safe` | `6789BCDF...twz` (35 chars)      | No lookalikes + no vowels (safer for public IDs)            |
 | `base58`            | `123456789ABCD...xyz` (58 chars) | Bitcoin-style (excludes 0,O,I,l)                            |
 | `base62`            | `0-9A-Za-z` (62 chars)           | Standard base62 encoding                                    |
-| `url_safe`          | `A-Za-z0-9_-` (64 chars)         | Alias of `url_alphabet`                                     |
-| `filename_safe`     | `A-Za-z0-9_-` (64 chars)         | Alias of `url_alphabet`, for filename contexts              |
+| `url_safe`          | `A-Za-z0-9_-` (64 chars)         | Same character set as `url_alphabet`                        |
+| `filename_safe`     | `A-Za-z0-9_-` (64 chars)         | Same character set as `url_alphabet`, for filename contexts |
 
 ### Usage Examples
 

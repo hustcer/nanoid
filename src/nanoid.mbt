@@ -96,8 +96,8 @@ fn validate_size(size : Int) -> ValidationResult {
 }
 
 ///|
-/// Validate random byte count and return a detailed error when mismatch happens
-fn validate_random_output_size(
+/// Validate custom random output length and byte range.
+fn validate_random_bytes(
   bytes : Array[Int],
   expected_size : Int,
 ) -> Result[Array[Int], NanoidError] {
@@ -107,6 +107,16 @@ fn validate_random_output_size(
         "Custom random function returned incorrect array length: expected \{expected_size}, got \{bytes.length()}",
       ),
     )
+  }
+  for i = 0; i < bytes.length(); i = i + 1 {
+    let byte = bytes[i]
+    if byte < 0 || byte >= 256 {
+      return Err(
+        RandomGenerationError(
+          "Custom random function returned invalid byte value at index \{i}: \{byte}. Expected values in range 0..255.",
+        ),
+      )
+    }
   }
   Ok(bytes)
 }
@@ -250,7 +260,7 @@ fn generate_id_characters(
   while counter < size && batch_count < max_batches {
     let random_bytes = match get_random(step) {
       Ok(bytes) =>
-        match validate_random_output_size(bytes, step) {
+        match validate_random_bytes(bytes, step) {
           Ok(valid_bytes) => valid_bytes
           Err(e) => return Err(e)
         }
@@ -412,7 +422,7 @@ fn request_random_exact(
   size : Int,
 ) -> Result[Array[Int], NanoidError] {
   match random(size) {
-    Ok(bytes) => validate_random_output_size(bytes, size)
+    Ok(bytes) => validate_random_bytes(bytes, size)
     Err(e) => Err(e)
   }
 }
@@ -492,7 +502,9 @@ fn generate_unchecked_with_alphabet_chars(
 ) -> Result[String, NanoidError] {
   let alphabet_length = alphabet_chars.length()
 
-  // Special case: single character alphabet - no randomness needed
+  // Single-character alphabet: skip RNG entirely during generation.
+  // Note: the probe-bypass at construction time (in custom_random) is a separate
+  // but related optimization — this branch handles the generation phase.
   if alphabet_length == 1 {
     return Ok(String::from_array(Array::make(size, alphabet_chars[0])))
   }
@@ -606,6 +618,13 @@ pub fn custom_random(
   match validate_parameters(alphabet, size) {
     Valid => {
       let alphabet_chars = string_to_chars(alphabet)
+      // Single-character alphabet: no randomness needed and no probe call is made.
+      // This is intentional — the probe-bypass is documented in the public API contract.
+      if alphabet_chars.length() == 1 {
+        return Ok(fn() -> Result[String, NanoidError] {
+          Ok(String::from_array(Array::make(size, alphabet_chars[0])))
+        })
+      }
       match create_replay_random(random) {
         Ok(replay_random) =>
           Ok(fn() -> Result[String, NanoidError] {

@@ -17,7 +17,7 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 - **Zero Dependencies**: No external dependencies beyond MoonBit core
 - **Runtime-Seeded by Default**: Default RNG seed is derived from runtime context to avoid fixed cross-process sequences
 
-> **Note**: MoonBit currently lacks a system entropy API. This library derives the default ChaCha8 seed from runtime process context (`time/args/cwd`) to avoid a fixed startup sequence, but this is still **not** cryptographic entropy. For security-sensitive IDs/tokens, pass a stronger entropy source via `custom_random`.  
+> **Note**: As of current MoonBit core, there is still no standard system-entropy API. The standard `@random` package provides a ChaCha8 PRNG, but its default constructor is not backed by OS cryptographic randomness. This library derives the default ChaCha8 seed from runtime process context (`time/args/cwd`) to avoid a fixed startup sequence, but this is still **not** cryptographic entropy. For security-sensitive IDs/tokens, pass an OS-backed entropy source via `custom_random`.  
 > **Thread safety**: The default global RNG is not thread-safe.
 
 ## Quick Start
@@ -33,9 +33,7 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 
    ```json
    {
-      "import": [
-        { "path": "hustcer/nanoid", "alias": "nanoid" }
-      ]
+     "import": [{ "path": "hustcer/nanoid", "alias": "nanoid" }]
    }
    ```
 
@@ -153,7 +151,7 @@ Creates a generator with custom alphabet and random function.
 
 - `alphabet`: String containing unique characters to use (1-256 characters, no duplicates)
 - `size`: Length for generated IDs (must be positive)
-- `random`: Custom random byte generator function that returns `Result`; it is probed once during setup with `size=1`, and every call must return exactly the requested number of bytes
+- `random`: Custom random byte generator function that returns `Result`; it is probed once during setup with `size=1`, and every call must return exactly the requested number of bytes in the range `0..255`. For single-character alphabets, the random function is never called (the probe is also skipped).
 - Returns: `Ok(generator)` or `Err(NanoidError)` for invalid parameters or invalid custom-random behavior during setup
 
 #### `custom_random_or_empty(alphabet : String, size : Int, random : (Int) -> Array[Int]) -> () -> String`
@@ -162,7 +160,7 @@ Convenience function that returns empty string on error (for backward compatibil
 
 - `alphabet`: String containing unique characters to use (1-256 characters, no duplicates)
 - `size`: Length for generated IDs (must be positive)
-- `random`: Custom random byte generator function; it is validated once during setup with `size=1`, and every call should return exactly the requested number of bytes
+- `random`: Custom random byte generator function; it is validated once during setup with `size=1`, and every call should return exactly the requested number of bytes in the range `0..255`. For single-character alphabets, the random function is never called (the probe is also skipped).
 - Returns: A generator function that returns string or empty string on setup or generation error
 
 ## Error Handling

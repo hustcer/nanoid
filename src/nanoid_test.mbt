@@ -322,6 +322,16 @@ test "custom_random_validation" {
   }
   let result_invalid = custom_random("ABC", 5, invalid_random)
   assert_true(result_invalid is Err(_))
+
+  // Test invalid custom random function (byte out of range during setup)
+  let invalid_byte_random = fn(_size : Int) -> Result[Array[Int], NanoidError] {
+    Ok([300])
+  }
+  let result_invalid_byte = custom_random("ABC", 5, invalid_byte_random)
+  match result_invalid_byte {
+    Err(error) => assert_true(error.to_string().contains("0..255"))
+    Ok(_) => assert_true(false)
+  }
 }
 
 ///|
@@ -366,6 +376,51 @@ test "custom_random_runtime_length_validation" {
       assert_true(msg.contains("got"))
     }
     Ok(_) => assert_true(false)
+  }
+}
+
+///|
+test "custom_random_runtime_byte_range_validation" {
+  // Probe call passes (size=1), runtime call returns invalid byte values.
+  let invalid_runtime_random = fn(
+    size : Int,
+  ) -> Result[Array[Int], NanoidError] {
+    if size == 1 {
+      Ok([42])
+    } else {
+      Ok(Array::make(size, 300))
+    }
+  }
+  let generator_result = custom_random("ABC", 5, invalid_runtime_random)
+  assert_true(generator_result is Ok(_))
+  let generator = generator_result.unwrap()
+  match generator() {
+    Err(error) => {
+      let msg = error.to_string()
+      assert_true(msg.contains("invalid byte value"))
+      assert_true(msg.contains("0..255"))
+    }
+    Ok(_) => assert_true(false)
+  }
+}
+
+///|
+test "custom_random_single_character_alphabet_skips_random_probe" {
+  let call_count : Ref[Int] = { val: 0 }
+  let failing_random = fn(_size : Int) -> Result[Array[Int], NanoidError] {
+    call_count.val = call_count.val + 1
+    panic() // unreachable: single-character alphabet skips random entirely
+  }
+  let generator_result = custom_random("X", 5, failing_random)
+  assert_true(generator_result is Ok(_))
+  let generator = generator_result.unwrap()
+  assert_eq(call_count.val, 0)
+  match generator() {
+    Ok(id) => {
+      assert_eq(id, "XXXXX")
+      assert_eq(call_count.val, 0)
+    }
+    Err(_) => assert_true(false)
   }
 }
 

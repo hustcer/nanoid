@@ -280,7 +280,7 @@ test "edge_cases_and_boundaries" {
   let oversized_alphabet = large_alphabet + "😀"
   let result_oversized = custom_alphabet(oversized_alphabet, size=5)
   match result_oversized {
-    Err(NanoidError::OversizedAlphabet(len)) => assert_eq(len, 257)
+    Err(OversizedAlphabet(len)) => assert_eq(len, 257)
     Err(_) => assert_true(false)
     Ok(_) => assert_true(false)
   }
@@ -598,7 +598,7 @@ test "duplicate_character_error_type" {
   // Verify the error type is DuplicateCharacter, not RandomGenerationError
   let result = custom_alphabet("ABBA", size=5)
   match result {
-    Err(NanoidError::DuplicateCharacter(char, first_pos, dup_pos)) => {
+    Err(DuplicateCharacter(char, first_pos, dup_pos)) => {
       assert_eq(char, 'B')
       assert_eq(first_pos, 1)
       assert_eq(dup_pos, 2)

@@ -4,6 +4,14 @@ import {
   "moonbitlang/core/random" @random,
 }
 
+warnings = "-29"
+
 options(
   deps: { "moonbitlang/core": "*" },
+  "native-stub": [ "random_stub.c" ],
+  targets: {
+    "random_default_fallback.mbt": [ "wasm", "wasm-gc" ],
+    "random_default_js.mbt": [ "js" ],
+    "random_default_native.mbt": [ "native", "llvm" ],
+  },
 )

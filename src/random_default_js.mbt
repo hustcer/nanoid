@@ -2,31 +2,44 @@
 /// JavaScript runtime-backed random bytes.
 extern "js" fn js_crypto_random(buf : Bytes, len : Int) -> Int =
   #| (buf, len) => {
+  #|   const chunkSize = 32768;
+  #|   globalThis.__moonbit_nanoid_random_error = "";
+  #|   const errorMessage = (prefix, error) => {
+  #|     const detail = error && error.message ? error.message : String(error);
+  #|     return `${prefix}: ${detail}`;
+  #|   };
   #|   try {
   #|     const view = new Uint8Array(buf.buffer, buf.byteOffset, len);
   #|     if (globalThis.crypto?.getRandomValues) {
-  #|       globalThis.crypto.getRandomValues(view);
+  #|       for (let offset = 0; offset < len; offset += chunkSize) {
+  #|         globalThis.crypto.getRandomValues(
+  #|           view.subarray(offset, Math.min(offset + chunkSize, len)),
+  #|         );
+  #|       }
   #|       return 0;
   #|     }
   #|     if (typeof require !== "undefined") {
   #|       const crypto = require("crypto");
-  #|       view.set(crypto.randomBytes(len));
+  #|       for (let offset = 0; offset < len; offset += chunkSize) {
+  #|         const end = Math.min(offset + chunkSize, len);
+  #|         view.set(crypto.randomBytes(end - offset), offset);
+  #|       }
   #|       return 0;
   #|     }
+  #|     globalThis.__moonbit_nanoid_random_error =
+  #|       "No JavaScript crypto source available";
   #|     return -1;
-  #|   } catch (_) {
+  #|   } catch (error) {
+  #|     globalThis.__moonbit_nanoid_random_error =
+  #|       errorMessage("JavaScript crypto random generation failed", error);
   #|     return -1;
   #|   }
   #| }
 
 ///|
-fn bytes_to_int_array(random_bytes : Bytes, size : Int) -> Array[Int] {
-  let bytes = Array::make(size, 0)
-  for i = 0; i < size; i = i + 1 {
-    bytes[i] = random_bytes[i].to_int()
-  }
-  bytes
-}
+extern "js" fn js_crypto_random_error() -> String =
+  #| () => globalThis.__moonbit_nanoid_random_error ||
+  #|   "Failed to get random bytes from JavaScript runtime"
 
 ///|
 fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
@@ -37,10 +50,6 @@ fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
   if js_crypto_random(random_bytes, size) == 0 {
     Ok(bytes_to_int_array(random_bytes, size))
   } else {
-    Err(
-      RandomGenerationError(
-        "Failed to get random bytes from JavaScript runtime",
-      ),
-    )
+    Err(RandomGenerationError(js_crypto_random_error()))
   }
 }

@@ -4,6 +4,9 @@ import {
   "moonbitlang/core/random" @random,
 }
 
+// env/random are only used by the wasm fallback file. Package imports are
+// checked per target, so native/js report them as unused without this.
+
 warnings = "-29"
 
 options(
@@ -13,5 +16,6 @@ options(
     "random_default_fallback.mbt": [ "wasm", "wasm-gc" ],
     "random_default_js.mbt": [ "js" ],
     "random_default_native.mbt": [ "native", "llvm" ],
+    "random_helpers.mbt": [ "js", "native", "llvm" ],
   },
 )

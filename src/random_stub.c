@@ -53,6 +53,7 @@ static int nanoid_fill_fd(int fd, uint8_t *buf, size_t len) {
 }
 
 static int nanoid_linux_getrandom(uint8_t *buf, size_t len) {
+#ifdef SYS_getrandom
   while (len > 0) {
     long read_len = syscall(SYS_getrandom, buf, len, 0);
     if (read_len > 0) {
@@ -67,6 +68,11 @@ static int nanoid_linux_getrandom(uint8_t *buf, size_t len) {
     }
   }
   return 0;
+#else
+  (void)buf;
+  (void)len;
+  return -2;
+#endif
 }
 
 static int nanoid_os_random_impl(uint8_t *buf, size_t len) {

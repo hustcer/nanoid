@@ -4,15 +4,6 @@
 extern "C" fn os_random(buf : Bytes, len : Int) -> Int = "nanoid_os_random"
 
 ///|
-fn bytes_to_int_array(random_bytes : Bytes, size : Int) -> Array[Int] {
-  let bytes = Array::make(size, 0)
-  for i = 0; i < size; i = i + 1 {
-    bytes[i] = random_bytes[i].to_int()
-  }
-  bytes
-}
-
-///|
 fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
   if size <= 0 {
     return Ok([])

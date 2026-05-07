@@ -1,10 +1,19 @@
 ## v0.6.0
 
+**🐛 Bug Fixes:**
+
+- **`NanoidError` is now `pub(all)`**: external callers can construct error variants. The `custom_random` signature `(Int) -> Result[Array[Int], NanoidError]` previously implied users could return `Err`, but the read-only `pub` enum made that impossible.
+
 **✨ Improvements:**
 
-- **OS-backed native and JS defaults**: default ID generation now uses platform/runtime crypto APIs on native and JavaScript targets
-- **WASM fallback preserved**: wasm and wasm-gc keep the runtime-seeded ChaCha8 fallback so `moon test --target all` remains self-contained
-- **Documentation updated for entropy model**: README now documents target-specific default randomness and the `custom_random` recommendation for security-sensitive WASM use
+- **OS-backed default RNG on native, JS, and LLVM**:
+  - native/llvm: `getrandom`/`/dev/urandom` (Linux), `arc4random_buf` (BSD/macOS), or `BCryptGenRandom` (Windows) via a C stub
+  - JS: Web Crypto (`crypto.getRandomValues`) with a Node `crypto.randomBytes` fallback, chunked at 32 KiB to stay under the 64 KiB spec cap
+  - wasm/wasm-gc: unchanged — runtime-seeded ChaCha8 PRNG, kept self-contained so `moon test --target all` requires no host crypto import
+- **JS extern surfaces underlying errors**: `RandomGenerationError` now carries the actual JS exception message instead of a generic string
+- **Linux `SYS_getrandom` guarded by `#ifdef`**: toolchains without the macro fall through to `/dev/urandom` rather than failing to compile
+- **Tests**: added user-error propagation through `custom_random`, generator-reuse uniqueness across calls, and full preset alphabet coverage
+- **README**: per-target entropy story, `pub(all) NanoidError`, `custom_random` Err propagation example, `moon.pkg` import snippet using current syntax, `Tigls/mb-getrandom` acknowledgment for the C stub reference
 
 ## v0.5.1
 

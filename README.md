@@ -15,8 +15,8 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 - **Error Safe**: Proper error handling with `Result` types instead of runtime panics
 - **Type Safe**: Full MoonBit type system support with `Debug` and `Eq` on error types
 - **Zero Dependencies**: No external dependencies beyond MoonBit core
-- **OS-Backed Entropy on Native and JS**: JS uses Web Crypto (`crypto.getRandomValues`) with a Node `crypto.randomBytes` fallback; native/llvm uses `getrandom`/`/dev/urandom`, `arc4random_buf`, or `BCryptGenRandom`; wasm/wasm-gc falls back to a runtime-seeded ChaCha8 PRNG
-- **No Shared RNG on Native and JS**: Native and JS generation no longer shares mutable RNG state
+- **OS-Backed Entropy on Native, JS, and LLVM**: JS uses Web Crypto (`crypto.getRandomValues`) with a Node `crypto.randomBytes` fallback; native/llvm uses `getrandom`/`/dev/urandom`, `arc4random_buf`, or `BCryptGenRandom`; wasm/wasm-gc falls back to a runtime-seeded ChaCha8 PRNG
+- **No Shared RNG on Native, JS, and LLVM**: Native, JS, and LLVM generation no longer shares mutable RNG state
 
 > **Note**: MoonBit core still does not expose a standard system-entropy API. Native and llvm builds use OS entropy directly (`getrandom`/`/dev/urandom`, `arc4random_buf`, or `BCryptGenRandom`), and JS builds use Web Crypto or Node `crypto.randomBytes`. WASM and wasm-gc keep the runtime-seeded ChaCha8 fallback so `moon test --target all` remains self-contained; for security-sensitive WASM IDs/tokens, pass a host-crypto-backed source via `custom_random`.  
 > **Thread safety**: The default global RNG used by the wasm fallback is not thread-safe.
@@ -32,9 +32,9 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 
 2. Import `hustcer/nanoid` package where you need it.
 
-   ```json
-   {
-     "import": [{ "path": "hustcer/nanoid", "alias": "nanoid" }]
+   ```
+   import {
+     "hustcer/nanoid",
    }
    ```
 
@@ -198,6 +198,22 @@ match @nanoid.custom_alphabet("ABCA", size=5) {
 
 // Use convenience functions for backward compatibility
 let id = @nanoid.nanoid_or_empty(size=-1)  // Returns "" on error
+
+// Propagate errors from a custom random source (e.g. an HSM that may fail)
+let rng = fn(size : Int) -> Result[Array[Int], @nanoid.NanoidError] {
+  match read_from_hsm(size) {
+    Ok(bytes) => Ok(bytes)
+    Err(_) => Err(@nanoid.RandomGenerationError("HSM offline"))
+  }
+}
+match @nanoid.custom_random(@nanoid.url_alphabet, 21, rng) {
+  Ok(generator) => match generator() {
+    Ok(id) => println(id)
+    Err(@nanoid.RandomGenerationError(msg)) => println("RNG failure: \{msg}")
+    Err(e) => println("Other error: \{e.to_string()}")
+  }
+  Err(e) => println("Setup failed: \{e.to_string()}")
+}
 ```
 
 ## Predefined Alphabets
@@ -265,6 +281,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - Original [Nano ID](https://github.com/ai/nanoid) by Andrey Sitnik
 - [nanoid-dictionary](https://github.com/CyberAP/nanoid-dictionary) for alphabet definitions
+- [Tigls/mb-getrandom](https://github.com/Tigls/mb-getrandom) — reference for the per-platform OS entropy C stub used by the native/llvm backend
 
 ## Contributing
 

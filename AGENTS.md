@@ -1,6 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
+
 This repository is a MoonBit module (`moon.mod.json`) with source rooted at `src/`.
 
 - `src/nanoid.mbt`: main library implementation and public API.
@@ -12,6 +13,7 @@ This repository is a MoonBit module (`moon.mod.json`) with source rooted at `src
 Keep new code package-local and organized by feature. In MoonBit, file names are organizational only; package paths come from module/package metadata, not file names.
 
 ## Build, Test, and Development Commands
+
 - `moon check --target all`: fast type-check across all backends.
 - `moon test --target all`: run the full test suite (same core check used in CI).
 - `moon run src/demo`: run the demo app in `src/demo/top.mbt`.
@@ -19,6 +21,7 @@ Keep new code package-local and organized by feature. In MoonBit, file names are
 - `moon info`: regenerate/check `pkg.generated.mbti` interface snapshots when public APIs change.
 
 ## Coding Style & Naming Conventions
+
 Follow existing MoonBit style in `src/nanoid.mbt`:
 
 - Use 2-space indentation and keep blocks readable with `///|` section delimiters.
@@ -28,15 +31,18 @@ Follow existing MoonBit style in `src/nanoid.mbt`:
 - Run `moon fmt` for all formatting decisions.
 
 ## Testing Guidelines
+
 - Add tests in `*_test.mbt` files, usually beside the package they verify (for example, `src/nanoid_test.mbt`).
 - Name tests descriptively with snake_case strings: `test "edge_cases_and_boundaries"`.
 - Cover happy paths, invalid inputs, boundary limits, and Unicode behavior.
 - Run `moon test --target all` locally before opening a PR.
 
 ## Commit & Pull Request Guidelines
+
 Recent history follows Conventional Commit-style prefixes: `fix:`, `feat:`, `refactor:`, `perf:`, `chore:` (with occasional breaking form like `refactor!:`). Use concise imperative summaries.
 
 For PRs:
+
 - Explain what changed and why.
 - Link related issues when applicable.
 - Include test evidence (for example, `moon test --target all` output summary).

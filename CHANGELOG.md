@@ -1,3 +1,11 @@
+## v0.6.0
+
+**✨ Improvements:**
+
+- **OS-backed native and JS defaults**: default ID generation now uses platform/runtime crypto APIs on native and JavaScript targets
+- **WASM fallback preserved**: wasm and wasm-gc keep the runtime-seeded ChaCha8 fallback so `moon test --target all` remains self-contained
+- **Documentation updated for entropy model**: README now documents target-specific default randomness and the `custom_random` recommendation for security-sensitive WASM use
+
 ## v0.5.1
 
 **🐛 Bug Fixes:**
@@ -92,7 +100,7 @@
 
 This version includes significant optimizations and improvements:
 
-- **Fixed Random Number Generator**: Corrected xorshift64* algorithm implementation for better randomness quality
+- **Fixed Random Number Generator**: Corrected xorshift64\* algorithm implementation for better randomness quality
 - **Enhanced Security**: Improved seed generation with multiple entropy sources and secure memory clearing
 - **Performance Optimizations**: Specialized algorithms for common alphabet sizes and reduced memory allocations
 - **Unified Validation**: Consolidated parameter validation logic for better maintainability

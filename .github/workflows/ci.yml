@@ -10,7 +10,7 @@ on:
       - develop
 
     paths-ignore:
-      - '**.md'
+      - "**.md"
 
 jobs:
   nanoid-check:
@@ -35,4 +35,3 @@ jobs:
           moon build --target all
           moon test --target all
           moon run src/demo
-

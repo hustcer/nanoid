@@ -15,9 +15,10 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 - **Error Safe**: Proper error handling with `Result` types instead of runtime panics
 - **Type Safe**: Full MoonBit type system support with `Debug` and `Eq` on error types
 - **Zero Dependencies**: No external dependencies beyond MoonBit core
-- **OS-Backed Entropy by Default**: JS uses `crypto.getRandomValues` (with a Node `crypto` fallback); native/llvm uses `getrandom`/`arc4random_buf`/`BCryptGenRandom`; wasm/wasm-gc falls back to a runtime-seeded ChaCha8 PRNG
+- **OS-Backed Entropy on Native and JS**: JS uses Web Crypto (`crypto.getRandomValues`) with a Node `crypto.randomBytes` fallback; native/llvm uses `getrandom`/`/dev/urandom`, `arc4random_buf`, or `BCryptGenRandom`; wasm/wasm-gc falls back to a runtime-seeded ChaCha8 PRNG
+- **No Shared RNG on Native and JS**: Native and JS generation no longer shares mutable RNG state
 
-> **Note**: On JS, native, and llvm targets the default RNG is backed by the host OS entropy source. On wasm/wasm-gc the MoonBit toolchain has no standard crypto import yet, so the fallback is a ChaCha8 PRNG seeded from runtime process context (`time/args/cwd`); this is **not** cryptographic entropy and should be replaced via `custom_random` for security-sensitive IDs/tokens on those targets.  
+> **Note**: MoonBit core still does not expose a standard system-entropy API. Native and llvm builds use OS entropy directly (`getrandom`/`/dev/urandom`, `arc4random_buf`, or `BCryptGenRandom`), and JS builds use Web Crypto or Node `crypto.randomBytes`. WASM and wasm-gc keep the runtime-seeded ChaCha8 fallback so `moon test --target all` remains self-contained; for security-sensitive WASM IDs/tokens, pass a host-crypto-backed source via `custom_random`.  
 > **Thread safety**: The default global RNG used by the wasm fallback is not thread-safe.
 
 ## Quick Start
@@ -253,7 +254,7 @@ The test suite includes:
 
 - Basic functionality and custom alphabet tests
 - Error handling and edge case tests (boundaries, Unicode, duplicate detection)
-- ChaCha8 RNG quality, reproducibility, distribution, and range tests
+- OS-backed default random generation and custom random validation tests
 - Unicode emoji and CJK character support tests
 
 ## License

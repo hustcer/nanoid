@@ -719,3 +719,76 @@ test "chacha8_rng_value_range" {
     }
   }
 }
+
+///|
+test "custom_random_propagates_user_error" {
+  // The probe call (size=1) inside custom_random must surface the user's RNG
+  // error verbatim instead of swallowing it.
+  let failing_random = fn(_size : Int) -> Result[Array[Int], NanoidError] {
+    Err(RandomGenerationError("hardware RNG offline"))
+  }
+  match custom_random("ABC", 5, failing_random) {
+    Err(RandomGenerationError(msg)) =>
+      assert_true(msg.contains("hardware RNG offline"))
+    Err(_) => assert_true(false)
+    Ok(_) => assert_true(false)
+  }
+
+  // Probe succeeds, but a later runtime call fails — the error must still
+  // propagate through the replay wrapper and the batch loop.
+  let intermittent_random = fn(size : Int) -> Result[Array[Int], NanoidError] {
+    if size == 1 {
+      Ok([42])
+    } else {
+      Err(RandomGenerationError("entropy pool drained"))
+    }
+  }
+  let generator = custom_random("ABC", 5, intermittent_random).unwrap()
+  match generator() {
+    Err(RandomGenerationError(msg)) =>
+      assert_true(msg.contains("entropy pool drained"))
+    _ => assert_true(false)
+  }
+}
+
+///|
+test "generator_produces_unique_ids_across_calls" {
+  // Reusing the same generator should produce distinct IDs every call,
+  // verifying that the default RNG state advances between invocations.
+  let gen = custom_alphabet(url_alphabet, size=21).unwrap()
+  let ids = Array::make(20, "")
+  for i = 0; i < 20; i = i + 1 {
+    ids[i] = gen().unwrap()
+  }
+  for i = 0; i < 20; i = i + 1 {
+    assert_eq(ids[i].length(), 21)
+    for j = i + 1; j < 20; j = j + 1 {
+      assert_false(ids[i] == ids[j])
+    }
+  }
+}
+
+///|
+test "all_preset_alphabets_generate_valid_ids" {
+  // Smoke-test every shipped preset end-to-end through the default RNG, not
+  // just their string contents. Catches regressions in mask / step calculation
+  // for alphabets the existing tests don't exercise.
+  let presets = [
+    numbers, lowercase, uppercase, alphanumeric, hex, hex_upper, nolookalikes, nolookalikes_safe,
+    base62, base58, url_safe, filename_safe,
+  ]
+  for alphabet in presets {
+    let gen = custom_alphabet(alphabet, size=15).unwrap()
+    let id = gen().unwrap()
+    assert_eq(id.length(), 15)
+    for c in id {
+      let mut found = false
+      for a in alphabet {
+        if c == a {
+          found = true
+        }
+      }
+      assert_true(found)
+    }
+  }
+}

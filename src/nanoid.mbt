@@ -6,7 +6,7 @@
 
 ///|
 /// Error types for nanoid operations
-pub enum NanoidError {
+pub(all) enum NanoidError {
   EmptyAlphabet
   OversizedAlphabet(Int)
   DuplicateCharacter(Char, Int, Int)

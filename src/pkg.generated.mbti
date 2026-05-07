@@ -47,7 +47,7 @@ pub let url_safe : String
 // Errors
 
 // Types and methods
-pub enum NanoidError {
+pub(all) enum NanoidError {
   EmptyAlphabet
   OversizedAlphabet(Int)
   DuplicateCharacter(Char, Int, Int)

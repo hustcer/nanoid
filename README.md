@@ -15,10 +15,10 @@ This is a MoonBit port of the popular [Nano ID](https://github.com/ai/nanoid) Ja
 - **Error Safe**: Proper error handling with `Result` types instead of runtime panics
 - **Type Safe**: Full MoonBit type system support with `Debug` and `Eq` on error types
 - **Zero Dependencies**: No external dependencies beyond MoonBit core
-- **Runtime-Seeded by Default**: Default RNG seed is derived from runtime context to avoid fixed cross-process sequences
+- **OS-Backed Entropy by Default**: JS uses `crypto.getRandomValues` (with a Node `crypto` fallback); native/llvm uses `getrandom`/`arc4random_buf`/`BCryptGenRandom`; wasm/wasm-gc falls back to a runtime-seeded ChaCha8 PRNG
 
-> **Note**: As of current MoonBit core, there is still no standard system-entropy API. The standard `@random` package provides a ChaCha8 PRNG, but its default constructor is not backed by OS cryptographic randomness. This library derives the default ChaCha8 seed from runtime process context (`time/args/cwd`) to avoid a fixed startup sequence, but this is still **not** cryptographic entropy. For security-sensitive IDs/tokens, pass an OS-backed entropy source via `custom_random`.  
-> **Thread safety**: The default global RNG is not thread-safe.
+> **Note**: On JS, native, and llvm targets the default RNG is backed by the host OS entropy source. On wasm/wasm-gc the MoonBit toolchain has no standard crypto import yet, so the fallback is a ChaCha8 PRNG seeded from runtime process context (`time/args/cwd`); this is **not** cryptographic entropy and should be replaced via `custom_random` for security-sensitive IDs/tokens on those targets.  
+> **Thread safety**: The default global RNG used by the wasm fallback is not thread-safe.
 
 ## Quick Start
 
@@ -168,7 +168,7 @@ Convenience function that returns empty string on error (for backward compatibil
 The library uses MoonBit's Result type for proper error handling:
 
 ```moonbit
-pub enum NanoidError {
+pub(all) enum NanoidError {
   EmptyAlphabet                    // Alphabet cannot be empty
   OversizedAlphabet(Int)           // Alphabet exceeds 256 characters
   DuplicateCharacter(Char, Int, Int) // Duplicate character found at positions

@@ -13,6 +13,11 @@
 
 **Bug fixes:**
 
+- Include Windows type definitions before `bcrypt.h` in the native entropy shim.
+  A standalone C regression reproduces the previous Windows compilation failure
+  (`LONG` / `ULONG` were undefined), and also checks zero-length, negative-length,
+  and guarded-buffer requests.
+
 - Give rejection sampling a minimum 128-byte retry budget. Previously, a
   one-character ID with a 129-character alphabet failed after only 16 rejected
   bytes, an event with probability about 1 in 74,000 for uniform random bytes.

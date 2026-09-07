@@ -6,8 +6,8 @@
 #include <moonbit.h>
 
 #if defined(_WIN32)
-#include <bcrypt.h>
 #include <windows.h>
+#include <bcrypt.h>
 #pragma comment(lib, "bcrypt.lib")
 
 static int nanoid_os_random_impl(uint8_t *buf, size_t len) {

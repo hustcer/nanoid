@@ -168,6 +168,11 @@ const MAX_ID_SIZE = 1000000
 const BATCH_GENERATION_SAFETY_FACTOR = 8
 
 ///|
+/// Allow short IDs to survive ordinary rejection streaks while keeping retries
+/// bounded for random functions that never produce an accepted byte.
+const MIN_RANDOM_BYTE_BUDGET = 128
+
+///|
 /// Minimum batch size for random byte generation
 const MIN_BATCH_SIZE = 8
 
@@ -333,7 +338,7 @@ fn calculate_optimal_batch_size(
 ///|
 /// Compute a finite batch budget based on expected random bytes needed.
 /// expected_bytes = ceil(size * (mask + 1) / alphabet_length)
-/// max_bytes = expected_bytes * safety_factor
+/// max_bytes = max(expected_bytes * safety_factor, minimum_byte_budget)
 fn calculate_max_batches(
   alphabet_length : Int,
   target_size : Int,
@@ -342,7 +347,9 @@ fn calculate_max_batches(
 ) -> Int {
   let expected_bytes = (target_size * (mask + 1) + alphabet_length - 1) /
     alphabet_length
-  let max_bytes = expected_bytes * BATCH_GENERATION_SAFETY_FACTOR
+  let max_bytes = (expected_bytes * BATCH_GENERATION_SAFETY_FACTOR).max(
+    MIN_RANDOM_BYTE_BUDGET,
+  )
   let max_batches = (max_bytes + step - 1) / step
   if max_batches < 1 {
     1

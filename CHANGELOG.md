@@ -1,3 +1,13 @@
+## Unreleased
+
+**Bug fixes:**
+
+- Give rejection sampling a minimum 128-byte retry budget. Previously, a
+  one-character ID with a 129-character alphabet failed after only 16 rejected
+  bytes, an event with probability about 1 in 74,000 for uniform random bytes.
+  Deterministic regression tests cover recovery after that streak and bounded
+  failure for a source that never yields an accepted byte.
+
 ## v0.6.0
 
 **🐛 Bug Fixes:**

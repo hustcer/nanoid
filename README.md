@@ -155,6 +155,11 @@ Creates a generator with custom alphabet and random function.
 - `random`: Custom random byte generator function that returns `Result`; it is probed once during setup with `size=1`, and every call must return exactly the requested number of bytes in the range `0..255`. For single-character alphabets, the random function is never called (the probe is also skipped).
 - Returns: `Ok(generator)` or `Err(NanoidError)` for invalid parameters or invalid custom-random behavior during setup
 
+Generation retries rejected byte values within a finite budget, with a minimum
+budget of 128 bytes to tolerate rejection streaks for short IDs. A source that
+keeps returning rejected values produces `RandomGenerationError`; source errors
+and invalid byte arrays still fail immediately.
+
 #### `custom_random_or_empty(alphabet : String, size : Int, random : (Int) -> Array[Int]) -> () -> String`
 
 Convenience function that returns empty string on error (for backward compatibility).

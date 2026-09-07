@@ -52,9 +52,8 @@ priv enum ValidationResult {
 /// Internal alphabet validation
 /// Performs validation in a single pass through the string
 fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
-  // Use an immutable HashMap to efficiently check for duplicates and provide rich error messages.
-  // The map stores the character and the index where it was first seen.
-  let mut seen : @immut/hashmap.HashMap[Char, Int] = @immut/hashmap.new()
+  // Validation only needs one evolving map of characters to first positions.
+  let seen : Map[Char, Int] = Map([])
   let mut char_count = 0
 
   // Single pass: count characters and check for duplicates simultaneously
@@ -66,7 +65,7 @@ fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
         return InvalidAlphabet(DuplicateCharacter(char, first_pos, char_count))
       None =>
         // First time seeing this character, add it to the map with its index.
-        seen = seen.add(char, char_count)
+        seen[char] = char_count
     }
     char_count = char_count + 1
   }

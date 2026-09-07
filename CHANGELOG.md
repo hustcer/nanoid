@@ -6,6 +6,10 @@
   it on every call. For 21-character IDs, three-round release benchmarks on an
   Apple M1 measured 6.660 → 0.41528 µs on native (16.04×) and 8.010 → 1.370 µs on
   JS (5.85×). See [PERFORMANCE.md](PERFORMANCE.md) for methodology and raw round means.
+- Use a local mutable map when validating custom alphabets. Generator setup with
+  64 ASCII / 256 supplementary Unicode characters improved by 3.14× / 4.39× on
+  native and 2.48× / 2.84× on JS in the same three-round benchmark methodology.
+  Duplicate positions, error precedence, and Unicode behavior are preserved.
 
 **Bug fixes:**
 

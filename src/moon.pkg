@@ -1,6 +1,5 @@
 import {
   "moonbitlang/core/env",
-  "moonbitlang/core/immut/hashmap" @immut/hashmap,
   "moonbitlang/core/random",
 }
 

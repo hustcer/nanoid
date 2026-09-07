@@ -4,6 +4,10 @@ import {
   "moonbitlang/core/random",
 }
 
+import {
+  "moonbitlang/core/bench",
+} for "test"
+
 // env/random are only used by the wasm fallback file. Package imports are
 // checked per target, so native/js report them as unused without this.
 

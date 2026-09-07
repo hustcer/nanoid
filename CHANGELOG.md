@@ -1,5 +1,12 @@
 ## Unreleased
 
+**Performance:**
+
+- Reuse the fixed URL alphabet in `nanoid()` instead of validating and converting
+  it on every call. For 21-character IDs, three-round release benchmarks on an
+  Apple M1 measured 6.660 → 0.41528 µs on native (16.04×) and 8.010 → 1.370 µs on
+  JS (5.85×). See [PERFORMANCE.md](PERFORMANCE.md) for methodology and raw round means.
+
 **Bug fixes:**
 
 - Give rejection sampling a minimum 128-byte retry budget. Previously, a

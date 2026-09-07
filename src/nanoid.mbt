@@ -148,6 +148,10 @@ fn string_to_chars(s : String) -> Array[Char] {
 pub let url_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
 
 ///|
+/// The built-in alphabet is fixed and valid; prepare its characters once.
+let url_alphabet_chars : Array[Char] = string_to_chars(url_alphabet)
+
+///|
 /// Default ID length (same as official nanoid)
 const DEFAULT_SIZE = 21
 
@@ -460,40 +464,18 @@ fn generate_unchecked_with_alphabet_chars(
 }
 
 ///|
-/// Internal generation without validation (caller must validate first)
-fn generate_unchecked(
-  alphabet : String,
-  size : Int,
-  get_random : (Int) -> Result[Array[Int], NanoidError],
-) -> Result[String, NanoidError] {
-  generate_unchecked_with_alphabet_chars(
-    string_to_chars(alphabet),
-    size,
-    get_random,
-  )
-}
-
-///|
-/// Generate ID with validation
-fn generate(
-  alphabet : String,
-  size : Int,
-  get_random : (Int) -> Result[Array[Int], NanoidError],
-) -> Result[String, NanoidError] {
-  match validate_parameters(alphabet, size) {
-    Valid => generate_unchecked(alphabet, size, get_random)
-    InvalidAlphabet(error) => Err(error)
-    InvalidSize(error) => Err(error)
-  }
-}
-
-///|
 /// Main nanoid function - generates URL-friendly unique ID
 /// Generates random IDs using the default URL-safe alphabet
 /// Returns Result with ID string or NanoidError for invalid parameters
 /// Usage: nanoid() generates 21-character ID, nanoid(size=10) generates 10-character ID
 pub fn nanoid(size? : Int = DEFAULT_SIZE) -> Result[String, NanoidError] {
-  generate(url_alphabet, size, get_random_bytes)
+  match validate_size(size) {
+    Valid =>
+      generate_unchecked_with_alphabet_chars(
+        url_alphabet_chars, size, get_random_bytes,
+      )
+    InvalidAlphabet(error) | InvalidSize(error) => Err(error)
+  }
 }
 
 ///|

@@ -60,4 +60,3 @@ pub fn NanoidError::to_string(Self) -> String
 // Type aliases
 
 // Traits
-

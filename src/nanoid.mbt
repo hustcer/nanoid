@@ -420,7 +420,7 @@ fn create_replay_random(
 ) -> Result[(Int) -> Result[Array[Int], NanoidError], NanoidError] {
   match request_random_exact(random, 1) {
     Ok(valid_test_bytes) => {
-      let probe_byte : Ref[Int?] = { val: Some(valid_test_bytes[0]) }
+      let probe_byte : Ref[Int?] = { val: Some(valid_test_bytes[0]), }
       Ok(fn(request_size : Int) -> Result[Array[Int], NanoidError] {
         generate_replay_random_bytes(random, probe_byte, request_size)
       })

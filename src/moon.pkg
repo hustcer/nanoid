@@ -1,7 +1,7 @@
 import {
-  "moonbitlang/core/env" @env,
+  "moonbitlang/core/env",
   "moonbitlang/core/immut/hashmap" @immut/hashmap,
-  "moonbitlang/core/random" @random,
+  "moonbitlang/core/random",
 }
 
 // env/random are only used by the wasm fallback file. Package imports are

@@ -341,7 +341,7 @@ test "custom_random_probe_does_not_consume_state" {
   for i = 0; i < 256; i = i + 1 {
     full_alphabet = full_alphabet + Int::unsafe_to_char(33 + i).to_string()
   }
-  let counter : Ref[Int] = { val: 0 }
+  let counter : Ref[Int] = { val: 0, }
   let deterministic_random = fn(size : Int) -> Result[Array[Int], NanoidError] {
     let bytes = Array::make(size, 0)
     for i = 0; i < size; i = i + 1 {
@@ -406,7 +406,7 @@ test "custom_random_runtime_byte_range_validation" {
 
 ///|
 test "custom_random_single_character_alphabet_skips_random_probe" {
-  let call_count : Ref[Int] = { val: 0 }
+  let call_count : Ref[Int] = { val: 0, }
   let failing_random = fn(_size : Int) -> Result[Array[Int], NanoidError] {
     call_count.val = call_count.val + 1
     panic() // unreachable: single-character alphabet skips random entirely
@@ -435,7 +435,7 @@ test "small_size_non_power_two_alphabet_does_not_false_fail" {
   // First 6 bytes are rejected (>= 129 after mask), then one accepted byte (index 5).
   // The previous batch limit logic stopped at 3 batches and failed before this success.
   let scripted_bytes : Array[Int] = [200, 200, 200, 200, 200, 200, 5]
-  let cursor : Ref[Int] = { val: 0 }
+  let cursor : Ref[Int] = { val: 0, }
   let scripted_random = fn(size : Int) -> Result[Array[Int], NanoidError] {
     let bytes = Array::make(size, 0)
     for i = 0; i < size; i = i + 1 {

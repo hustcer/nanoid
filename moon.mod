@@ -1,0 +1,15 @@
+name = "hustcer/nanoid"
+
+version = "0.6.0"
+
+readme = "README.md"
+
+repository = "https://github.com/hustcer/nanoid"
+
+license = "MIT"
+
+keywords = [ "id", "generator", "nanoid", "uuid", "random", "unique" ]
+
+description = "A MoonBit port of the NanoID library"
+
+source = "src"

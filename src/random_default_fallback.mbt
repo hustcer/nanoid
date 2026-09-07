@@ -34,7 +34,7 @@ fn build_runtime_seed() -> Bytes {
     Some(cwd) => state = absorb_seed_string(state, cwd)
     None => ()
   }
-  if state == UInt64::default() {
+  if state == Default::default() {
     state = Int::to_uint64(1)
   }
 

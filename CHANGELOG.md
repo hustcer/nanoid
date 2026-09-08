@@ -1,28 +1,48 @@
-## Unreleased
+## v0.6.1
 
 **Performance:**
 
 - Reuse the fixed URL alphabet in `nanoid()` instead of validating and converting
-  it on every call. For 21-character IDs, three-round release benchmarks on an
-  Apple M1 measured 6.660 → 0.41528 µs on native (16.04×) and 8.010 → 1.370 µs on
-  JS (5.85×). See [PERFORMANCE.md](PERFORMANCE.md) for methodology and raw round means.
-- Use a local mutable map when validating custom alphabets. Generator setup with
-  64 ASCII / 256 supplementary Unicode characters improved by 3.14× / 4.39× on
-  native and 2.48× / 2.84× on JS in the same three-round benchmark methodology.
+  it on every call, while retaining ID-size validation. Recorded release
+  microbenchmarks for this change on Apple M1/macOS with MoonBit 0.1.20260827
+  and Node.js 22.23.1 show 21-character generation times of
+  6.660 → 0.41528 µs on native (about 16.04×) and 8.010 → 1.370 µs on JS
+  (about 5.85×), using the median of three process means.
+- Use a local mutable map when validating custom alphabets. For generator setup
+  with 64 ASCII / 256 supplementary Unicode characters, the recorded before/after
+  time ratios are about 3.14× / 4.39× on native and 2.48× / 2.84× on JS,
+  using the same environment and aggregation method. These setup benchmarks
+  construct generators without invoking them; they do not measure ID generation.
   Duplicate positions, error precedence, and Unicode behavior are preserved.
+
+These are measurements of individual optimizations against their respective
+baselines, not a general speedup guarantee or a combined v0.6.0-to-v0.6.1 result.
+See [PERFORMANCE.md](PERFORMANCE.md) for baselines, methodology, and per-round means.
 
 **Bug fixes:**
 
 - Include Windows type definitions before `bcrypt.h` in the native entropy shim.
-  A standalone C regression reproduces the previous Windows compilation failure
-  (`LONG` / `ULONG` were undefined), and also checks zero-length, negative-length,
-  and guarded-buffer requests.
+  A standalone C regression reproduces the previous missing-type errors
+  (`LONG` / `ULONG`) when cross-compiling for Windows with Zig, and compiles
+  and links after the fix. It also checks zero-length, negative-length, and
+  guarded-buffer requests when executed; cross-compilation alone does not run
+  those checks on Windows.
+- Set rejection sampling's minimum total random-byte budget per generation
+  to 128 bytes, rounded up to complete batches. Previously, a one-character ID with a
+  129-character alphabet failed if its first 16 bytes were all rejected.
+  For independent, uniformly distributed bytes, that event has probability
+  `(127/256)^16`, approximately 1 in 74,298. Deterministic regression tests cover
+  recovery after that streak and bounded failure for a source that never yields
+  an accepted byte. Random-source errors and invalid byte arrays still fail
+  immediately.
 
-- Give rejection sampling a minimum 128-byte retry budget. Previously, a
-  one-character ID with a 129-character alphabet failed after only 16 rejected
-  bytes, an event with probability about 1 in 74,000 for uniform random bytes.
-  Deterministic regression tests cover recovery after that streak and bounded
-  failure for a source that never yields an accepted byte.
+**Maintenance:**
+
+- Migrate `moon.mod.json` to `moon.mod`, update the demo's executable metadata to
+  `pkgtype`, and simplify redundant import aliases. Public API signatures are
+  unchanged; this release was validated with MoonBit 0.1.20260827.
+- Replace the deprecated `UInt64::default()` call in WASM seed initialization
+  with `Default::default()`, preserving the zero-state check.
 
 ## v0.6.0
 

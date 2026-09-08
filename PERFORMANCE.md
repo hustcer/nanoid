@@ -21,7 +21,8 @@ or workload. Values below retain the precision printed by `moon bench`.
 
 ## Reuse the fixed URL alphabet
 
-Baseline: `90363b3` (the measured checkout `ab44480` has the identical source tree).
+Baseline: `53bd8fb` (the original references `90363b3` and measured checkout
+`ab44480` have the identical source tree; `53bd8fb` is in the published history).
 The changed version prepares the private URL alphabet
 character array once and validates only the requested size in `nanoid()`.
 Previously, every call rebuilt a persistent hash map to validate the same 64
@@ -51,7 +52,7 @@ its small variation is not treated as an improvement.
 | JS | Default size 1 | 8.55 / 8.33 / 8.10 | 1.04 / 1.06 / 1.10 |
 | JS | Reused generator | 1.35 / 1.35 / 1.36 | 1.38 / 1.35 / 1.39 |
 
-To reproduce the baseline, check out `90363b3` in a separate worktree, copy
+To reproduce the baseline, check out `53bd8fb` in a separate worktree, copy
 `src/nanoid_bench_test.mbt` from this change, and add the test-only
 `moonbitlang/core/bench` import to `src/moon.pkg`. Run the commands above on each
 version in alternating order. Tests for invalid sizes, maximum sizes, alphabet
@@ -60,9 +61,10 @@ interfaces are unchanged.
 
 ## Use a local mutable map for alphabet validation
 
-Baseline: `76a6e90`. This change replaces the persistent character-to-position
-map with a local `Map[Char, Int]`. Validation still scans Unicode code points in
-order and reports the same first duplicate, positions, and size errors. Each
+Baseline: `801fa83` (identical source tree to the measured baseline `76a6e90`,
+with `801fa83` in the published history). This change replaces the persistent
+character-to-position map with a local `Map[Char, Int]`. Validation still scans
+Unicode code points in order and reports the same first duplicate, positions, and size errors. Each
 benchmark times construction of a generator, without invoking its RNG.
 
 | Backend | Alphabet | Before | After | Speedup |

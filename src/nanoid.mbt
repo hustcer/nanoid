@@ -16,6 +16,12 @@ pub(all) enum NanoidError {
 } derive(Debug, Eq)
 
 ///|
+pub extend NanoidError with Debug::{to_repr}
+
+///|
+pub extend NanoidError with Eq::{equal, not_equal}
+
+///|
 /// Convert NanoidError to a human-readable string with helpful guidance
 pub fn NanoidError::to_string(self : NanoidError) -> String {
   match self {

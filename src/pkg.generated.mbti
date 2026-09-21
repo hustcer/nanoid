@@ -55,6 +55,9 @@ pub(all) enum NanoidError {
   SizeTooLarge(Int)
   RandomGenerationError(String)
 } derive(Eq, @debug.Debug)
+pub fn NanoidError::equal(Self, Self) -> Bool
+pub fn NanoidError::not_equal(Self, Self) -> Bool
+pub fn NanoidError::to_repr(Self) -> @debug.Repr
 pub fn NanoidError::to_string(Self) -> String
 
 // Type aliases

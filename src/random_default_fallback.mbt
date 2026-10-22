@@ -35,19 +35,19 @@ fn build_runtime_seed() -> Bytes {
     None => ()
   }
   if state == Default::default() {
-    state = Int::to_uint64(1)
+    state = Int32::to_uint64(1)
   }
 
   let seed_bytes : Array[Byte] = Array::make(32, 0)
   for i = 0; i < 32; i = i + 1 {
-    state = mix_seed_state(state + Int::to_uint64(i + 1))
+    state = mix_seed_state(state + Int32::to_uint64(i + 1))
     seed_bytes[i] = state.to_byte()
   }
   Bytes::from_array(seed_bytes)
 }
 
 ///|
-fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
+fn get_random_bytes(size : Int32) -> Result[Array[Int32], NanoidError] {
   let bytes = Array::make(size, 0)
   for i = 0; i < size; i = i + 1 {
     bytes[i] = global_rng.int(limit=256)

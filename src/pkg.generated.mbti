@@ -12,13 +12,13 @@ pub let base58 : String
 
 pub let base62 : String
 
-pub fn custom_alphabet(String, size? : Int) -> Result[() -> Result[String, NanoidError], NanoidError]
+pub fn custom_alphabet(String, size? : Int32) -> Result[() -> Result[String, NanoidError], NanoidError]
 
-pub fn custom_alphabet_or_empty(String, size? : Int) -> () -> String
+pub fn custom_alphabet_or_empty(String, size? : Int32) -> () -> String
 
-pub fn custom_random(String, Int, (Int) -> Result[Array[Int], NanoidError]) -> Result[() -> Result[String, NanoidError], NanoidError]
+pub fn custom_random(String, Int32, (Int32) -> Result[Array[Int32], NanoidError]) -> Result[() -> Result[String, NanoidError], NanoidError]
 
-pub fn custom_random_or_empty(String, Int, (Int) -> Array[Int]) -> () -> String
+pub fn custom_random_or_empty(String, Int32, (Int32) -> Array[Int32]) -> () -> String
 
 pub let filename_safe : String
 
@@ -28,9 +28,9 @@ pub let hex_upper : String
 
 pub let lowercase : String
 
-pub fn nanoid(size? : Int) -> Result[String, NanoidError]
+pub fn nanoid(size? : Int32) -> Result[String, NanoidError]
 
-pub fn nanoid_or_empty(size? : Int) -> String
+pub fn nanoid_or_empty(size? : Int32) -> String
 
 pub let nolookalikes : String
 
@@ -49,10 +49,10 @@ pub let url_safe : String
 // Types and methods
 pub(all) enum NanoidError {
   EmptyAlphabet
-  OversizedAlphabet(Int)
-  DuplicateCharacter(Char, Int, Int)
-  SizeTooSmall(Int)
-  SizeTooLarge(Int)
+  OversizedAlphabet(Int32)
+  DuplicateCharacter(Char, Int32, Int32)
+  SizeTooSmall(Int32)
+  SizeTooLarge(Int32)
   RandomGenerationError(String)
 } derive(Eq, @debug.Debug)
 pub fn NanoidError::equal(Self, Self) -> Bool

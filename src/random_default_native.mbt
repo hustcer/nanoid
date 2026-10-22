@@ -1,10 +1,10 @@
 ///|
 /// Native OS-backed random bytes.
 #borrow(buf)
-extern "C" fn os_random(buf : Bytes, len : Int) -> Int = "nanoid_os_random"
+extern "C" fn os_random(buf : Bytes, len : Int32) -> Int32 = "nanoid_os_random"
 
 ///|
-fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
+fn get_random_bytes(size : Int32) -> Result[Array[Int32], NanoidError] {
   if size <= 0 {
     return Ok([])
   }

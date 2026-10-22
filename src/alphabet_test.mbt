@@ -4,8 +4,8 @@ test "every_supported_alphabet_size_preserves_unicode_sampling" {
   for length in 1..<=256 {
     let chars = Array::makei(length, i => (0x1F300 + i).unsafe_to_char())
     let alphabet = String::from_array(chars)
-    let next : Ref[Int] = { val: 0, }
-    let random = fn(size : Int) -> Result[Array[Int], @nanoid.NanoidError] {
+    let next : Ref[Int32] = { val: 0, }
+    let random = fn(size : Int32) -> Result[Array[Int32], @nanoid.NanoidError] {
       Ok(
         Array::makei(size, _ => {
           let byte = next.val & 255

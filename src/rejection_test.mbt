@@ -6,8 +6,8 @@ test "short_id_survives_sixteen_rejected_bytes" {
   let alphabet = String::from_array(
     Array::makei(129, i => (0x400 + i).unsafe_to_char()),
   )
-  let consumed : Ref[Int] = { val: 0, }
-  let random = fn(size : Int) -> Result[Array[Int], @nanoid.NanoidError] {
+  let consumed : Ref[Int32] = { val: 0, }
+  let random = fn(size : Int32) -> Result[Array[Int32], @nanoid.NanoidError] {
     Ok(
       Array::makei(size, _ => {
         let byte = if consumed.val < 16 { 255 } else { 5 }
@@ -22,8 +22,8 @@ test "short_id_survives_sixteen_rejected_bytes" {
 
 ///|
 test "short_id_rejection_retries_remain_bounded" {
-  let consumed : Ref[Int] = { val: 0, }
-  let random = fn(size : Int) -> Result[Array[Int], @nanoid.NanoidError] {
+  let consumed : Ref[Int32] = { val: 0, }
+  let random = fn(size : Int32) -> Result[Array[Int32], @nanoid.NanoidError] {
     consumed.val += size
     if consumed.val > 256 {
       return Err(@nanoid.RandomGenerationError("test safety guard reached"))

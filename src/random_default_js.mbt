@@ -1,6 +1,6 @@
 ///|
 /// JavaScript runtime-backed random bytes.
-extern "js" fn js_crypto_random(buf : Bytes, len : Int) -> Int =
+extern "js" fn js_crypto_random(buf : Bytes, len : Int32) -> Int32 =
   #| (buf, len) => {
   #|   const chunkSize = 32768;
   #|   globalThis.__moonbit_nanoid_random_error = "";
@@ -42,7 +42,7 @@ extern "js" fn js_crypto_random_error() -> String =
   #|   "Failed to get random bytes from JavaScript runtime"
 
 ///|
-fn get_random_bytes(size : Int) -> Result[Array[Int], NanoidError] {
+fn get_random_bytes(size : Int32) -> Result[Array[Int32], NanoidError] {
   if size <= 0 {
     return Ok([])
   }

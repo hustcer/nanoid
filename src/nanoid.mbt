@@ -8,10 +8,10 @@
 /// Error types for nanoid operations
 pub(all) enum NanoidError {
   EmptyAlphabet
-  OversizedAlphabet(Int)
-  DuplicateCharacter(Char, Int, Int)
-  SizeTooSmall(Int)
-  SizeTooLarge(Int)
+  OversizedAlphabet(Int32)
+  DuplicateCharacter(Char, Int32, Int32)
+  SizeTooSmall(Int32)
+  SizeTooLarge(Int32)
   RandomGenerationError(String)
 } derive(Debug, Eq)
 
@@ -59,7 +59,7 @@ priv enum ValidationResult {
 /// Performs validation in a single pass through the string
 fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
   // Validation only needs one evolving map of characters to first positions.
-  let seen : Map[Char, Int] = Map([])
+  let seen : Map[Char, Int32] = Map([])
   let mut char_count = 0
 
   // Single pass: count characters and check for duplicates simultaneously
@@ -90,7 +90,7 @@ fn validate_alphabet_uncached(alphabet : String) -> ValidationResult {
 
 ///|
 /// Validate size parameter
-fn validate_size(size : Int) -> ValidationResult {
+fn validate_size(size : Int32) -> ValidationResult {
   if size <= 0 {
     return InvalidSize(SizeTooSmall(size))
   }
@@ -103,9 +103,9 @@ fn validate_size(size : Int) -> ValidationResult {
 ///|
 /// Validate custom random output length and byte range.
 fn validate_random_bytes(
-  bytes : Array[Int],
-  expected_size : Int,
-) -> Result[Array[Int], NanoidError] {
+  bytes : Array[Int32],
+  expected_size : Int32,
+) -> Result[Array[Int32], NanoidError] {
   if bytes.length() != expected_size {
     return Err(
       RandomGenerationError(
@@ -128,7 +128,7 @@ fn validate_random_bytes(
 
 ///|
 /// Validate both alphabet and size parameters
-fn validate_parameters(alphabet : String, size : Int) -> ValidationResult {
+fn validate_parameters(alphabet : String, size : Int32) -> ValidationResult {
   match validate_alphabet_uncached(alphabet) {
     Valid => validate_size(size)
     error => error
@@ -193,7 +193,7 @@ const MAX_BATCH_SIZE = 256
 
 ///|
 /// Calculate mask for uniform distribution (power of 2 - 1)
-fn calculate_mask(alphabet_length : Int) -> Int {
+fn calculate_mask(alphabet_length : Int32) -> Int32 {
   let mut mask = 1
   while mask < alphabet_length {
     mask = mask << 1
@@ -205,11 +205,11 @@ fn calculate_mask(alphabet_length : Int) -> Int {
 /// Generate ID characters using batch processing with rejection sampling
 fn generate_id_characters(
   alphabet_chars : Array[Char],
-  alphabet_length : Int,
-  size : Int,
-  step : Int,
-  mask : Int,
-  get_random : (Int) -> Result[Array[Int], NanoidError],
+  alphabet_length : Int32,
+  size : Int32,
+  step : Int32,
+  mask : Int32,
+  get_random : (Int32) -> Result[Array[Int32], NanoidError],
 ) -> Result[String, NanoidError] {
   let id_chars = Array::make(size, ' ')
   let mut counter = 0
@@ -248,14 +248,14 @@ fn generate_id_characters(
 ///|
 /// Process a batch of random bytes and fill ID characters (optimized version)
 fn process_random_batch_optimized(
-  random_bytes : Array[Int],
+  random_bytes : Array[Int32],
   alphabet_chars : Array[Char],
   id_chars : Array[Char],
-  start_counter : Int,
-  target_size : Int,
-  mask : Int,
-  alphabet_length : Int,
-) -> Int {
+  start_counter : Int32,
+  target_size : Int32,
+  mask : Int32,
+  alphabet_length : Int32,
+) -> Int32 {
   let mut counter = start_counter
   let mut byte_index = 0
   while byte_index < random_bytes.length() && counter < target_size {
@@ -286,10 +286,10 @@ fn process_random_batch_optimized(
 ///   keeps semantics minimal while enabling single-batch generation for common alphabets
 ///   like 64 (URL/base64) and 32 (base32) when size is within limits.
 fn get_precomputed_batch_size(
-  alphabet_length : Int,
-  target_size : Int,
-  mask : Int,
-) -> Int? {
+  alphabet_length : Int32,
+  target_size : Int32,
+  mask : Int32,
+) -> Int32? {
   if mask + 1 == alphabet_length { // perfect power-of-two span => zero rejection
     // Clamp desired step to reasonable bounds
     let mut step = target_size
@@ -308,10 +308,10 @@ fn get_precomputed_batch_size(
 /// Calculate optimal batch size for random byte generation
 /// Uses entropy efficiency analysis to determine the best batch size
 fn calculate_optimal_batch_size(
-  alphabet_length : Int,
-  target_size : Int,
-  mask : Int,
-) -> Int {
+  alphabet_length : Int32,
+  target_size : Int32,
+  mask : Int32,
+) -> Int32 {
   // Fast path: perfect power-of-two span uses single batch (clamped) to reduce overhead.
   let optimized_step = match
     get_precomputed_batch_size(alphabet_length, target_size, mask) {
@@ -349,11 +349,11 @@ fn calculate_optimal_batch_size(
 /// expected_bytes = ceil(size * (mask + 1) / alphabet_length)
 /// max_bytes = max(expected_bytes * safety_factor, minimum_byte_budget)
 fn calculate_max_batches(
-  alphabet_length : Int,
-  target_size : Int,
-  step : Int,
-  mask : Int,
-) -> Int {
+  alphabet_length : Int32,
+  target_size : Int32,
+  step : Int32,
+  mask : Int32,
+) -> Int32 {
   let expected_bytes = (target_size * (mask + 1) + alphabet_length - 1) /
     alphabet_length
   let max_bytes = (expected_bytes * BATCH_GENERATION_SAFETY_FACTOR).max(
@@ -370,9 +370,9 @@ fn calculate_max_batches(
 ///|
 /// Request exact number of bytes from a custom random function.
 fn request_random_exact(
-  random : (Int) -> Result[Array[Int], NanoidError],
-  size : Int,
-) -> Result[Array[Int], NanoidError] {
+  random : (Int32) -> Result[Array[Int32], NanoidError],
+  size : Int32,
+) -> Result[Array[Int32], NanoidError] {
   match random(size) {
     Ok(bytes) => validate_random_bytes(bytes, size)
     Err(e) => Err(e)
@@ -381,7 +381,10 @@ fn request_random_exact(
 
 ///|
 /// Prepend a probe byte to the remaining random bytes.
-fn prepend_probe_byte(first_byte : Int, rest_bytes : Array[Int]) -> Array[Int] {
+fn prepend_probe_byte(
+  first_byte : Int32,
+  rest_bytes : Array[Int32],
+) -> Array[Int32] {
   let merged_bytes = Array::make(rest_bytes.length() + 1, 0)
   merged_bytes[0] = first_byte
   for i = 0; i < rest_bytes.length(); i = i + 1 {
@@ -393,11 +396,11 @@ fn prepend_probe_byte(first_byte : Int, rest_bytes : Array[Int]) -> Array[Int] {
 ///|
 /// Try to build random bytes from the cached probe byte.
 fn generate_with_probe_byte(
-  random : (Int) -> Result[Array[Int], NanoidError],
-  probe_byte : Ref[Int?],
-  first_byte : Int,
-  request_size : Int,
-) -> Result[Array[Int], NanoidError] {
+  random : (Int32) -> Result[Array[Int32], NanoidError],
+  probe_byte : Ref[Int32?],
+  first_byte : Int32,
+  request_size : Int32,
+) -> Result[Array[Int32], NanoidError] {
   if request_size == 1 {
     probe_byte.val = None
     return Ok([first_byte])
@@ -414,10 +417,10 @@ fn generate_with_probe_byte(
 ///|
 /// Generate random bytes, consuming probe byte first when available.
 fn generate_replay_random_bytes(
-  random : (Int) -> Result[Array[Int], NanoidError],
-  probe_byte : Ref[Int?],
-  request_size : Int,
-) -> Result[Array[Int], NanoidError] {
+  random : (Int32) -> Result[Array[Int32], NanoidError],
+  probe_byte : Ref[Int32?],
+  request_size : Int32,
+) -> Result[Array[Int32], NanoidError] {
   if request_size <= 0 {
     return Ok([])
   }
@@ -432,12 +435,12 @@ fn generate_replay_random_bytes(
 /// Wrap a custom random function and replay the probe byte so validation does not
 /// consume random state from the first generated ID.
 fn create_replay_random(
-  random : (Int) -> Result[Array[Int], NanoidError],
-) -> Result[(Int) -> Result[Array[Int], NanoidError], NanoidError] {
+  random : (Int32) -> Result[Array[Int32], NanoidError],
+) -> Result[(Int32) -> Result[Array[Int32], NanoidError], NanoidError] {
   match request_random_exact(random, 1) {
     Ok(valid_test_bytes) => {
-      let probe_byte : Ref[Int?] = { val: Some(valid_test_bytes[0]), }
-      Ok(fn(request_size : Int) -> Result[Array[Int], NanoidError] {
+      let probe_byte : Ref[Int32?] = { val: Some(valid_test_bytes[0]), }
+      Ok(fn(request_size : Int32) -> Result[Array[Int32], NanoidError] {
         generate_replay_random_bytes(random, probe_byte, request_size)
       })
     }
@@ -449,8 +452,8 @@ fn create_replay_random(
 /// Internal generation without validation using precomputed alphabet characters
 fn generate_unchecked_with_alphabet_chars(
   alphabet_chars : Array[Char],
-  size : Int,
-  get_random : (Int) -> Result[Array[Int], NanoidError],
+  size : Int32,
+  get_random : (Int32) -> Result[Array[Int32], NanoidError],
 ) -> Result[String, NanoidError] {
   let alphabet_length = alphabet_chars.length()
 
@@ -473,7 +476,7 @@ fn generate_unchecked_with_alphabet_chars(
 /// Generates random IDs using the default URL-safe alphabet
 /// Returns Result with ID string or NanoidError for invalid parameters
 /// Usage: nanoid() generates 21-character ID, nanoid(size=10) generates 10-character ID
-pub fn nanoid(size? : Int = DEFAULT_SIZE) -> Result[String, NanoidError] {
+pub fn nanoid(size~ : Int32 = DEFAULT_SIZE) -> Result[String, NanoidError] {
   match validate_size(size) {
     Valid =>
       generate_unchecked_with_alphabet_chars(
@@ -486,7 +489,7 @@ pub fn nanoid(size? : Int = DEFAULT_SIZE) -> Result[String, NanoidError] {
 ///|
 /// Convenience function that returns empty string on error (for backward compatibility)
 /// Usage: nanoid_or_empty() generates 21-character ID or empty string on error
-pub fn nanoid_or_empty(size? : Int = DEFAULT_SIZE) -> String {
+pub fn nanoid_or_empty(size~ : Int32 = DEFAULT_SIZE) -> String {
   match nanoid(size~) {
     Ok(id) => id
     Err(_) => ""
@@ -500,7 +503,7 @@ pub fn nanoid_or_empty(size? : Int = DEFAULT_SIZE) -> String {
 /// Usage: let gen = custom_alphabet("abc123", size=8)?; let id = gen()?
 pub fn custom_alphabet(
   alphabet : String,
-  size? : Int = DEFAULT_SIZE,
+  size~ : Int32 = DEFAULT_SIZE,
 ) -> Result[() -> Result[String, NanoidError], NanoidError] {
   match validate_parameters(alphabet, size) {
     Valid => {
@@ -521,7 +524,7 @@ pub fn custom_alphabet(
 /// Usage: let gen = custom_alphabet_or_empty("abc123", size=8); let id = gen()
 pub fn custom_alphabet_or_empty(
   alphabet : String,
-  size? : Int = DEFAULT_SIZE,
+  size~ : Int32 = DEFAULT_SIZE,
 ) -> () -> String {
   match custom_alphabet(alphabet, size~) {
     Ok(gen) =>
@@ -542,8 +545,8 @@ pub fn custom_alphabet_or_empty(
 /// Usage: let gen = custom_random(alphabet, size, random_fn)?; let id = gen()?
 pub fn custom_random(
   alphabet : String,
-  size : Int,
-  random : (Int) -> Result[Array[Int], NanoidError],
+  size : Int32,
+  random : (Int32) -> Result[Array[Int32], NanoidError],
 ) -> Result[() -> Result[String, NanoidError], NanoidError] {
   match validate_parameters(alphabet, size) {
     Valid => {
@@ -575,10 +578,10 @@ pub fn custom_random(
 /// Usage: let gen = custom_random_or_empty(alphabet, size, random_fn); let id = gen()
 pub fn custom_random_or_empty(
   alphabet : String,
-  size : Int,
-  random : (Int) -> Array[Int],
+  size : Int32,
+  random : (Int32) -> Array[Int32],
 ) -> () -> String {
-  let safe_random = fn(size : Int) -> Result[Array[Int], NanoidError] {
+  let safe_random = fn(size : Int32) -> Result[Array[Int32], NanoidError] {
     Ok(random(size))
   }
   match custom_random(alphabet, size, safe_random) {

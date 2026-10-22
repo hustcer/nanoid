@@ -271,7 +271,7 @@ test "edge_cases_and_boundaries" {
   // Test very large alphabet (at limit)
   let mut large_alphabet = ""
   for i = 0; i < 256; i = i + 1 {
-    large_alphabet = large_alphabet + Int::unsafe_to_char(33 + i).to_string() // Start from '!' (33) to avoid duplicates
+    large_alphabet = large_alphabet + Int32::unsafe_to_char(33 + i).to_string() // Start from '!' (33) to avoid duplicates
   }
   let result_large = @nanoid.custom_alphabet(large_alphabet, size=5)
   assert_true(result_large is Ok(_))
@@ -310,7 +310,9 @@ test "error_message_quality" {
 ///|
 test "custom_random_validation" {
   // Test valid custom random function
-  let valid_random = fn(size : Int) -> Result[Array[Int], @nanoid.NanoidError] {
+  let valid_random = fn(
+    size : Int32,
+  ) -> Result[Array[Int32], @nanoid.NanoidError] {
     Ok(Array::make(size, 42))
   }
   let result = @nanoid.custom_random("ABC", 5, valid_random)
@@ -318,8 +320,8 @@ test "custom_random_validation" {
 
   // Test invalid custom random function (wrong array length)
   let invalid_random = fn(
-    _size : Int,
-  ) -> Result[Array[Int], @nanoid.NanoidError] {
+    _size : Int32,
+  ) -> Result[Array[Int32], @nanoid.NanoidError] {
     Ok(Array::make(2, 42)) // Always returns 2 elements regardless of requested size
   }
   let result_invalid = @nanoid.custom_random("ABC", 5, invalid_random)
@@ -327,8 +329,8 @@ test "custom_random_validation" {
 
   // Test invalid custom random function (byte out of range during setup)
   let invalid_byte_random = fn(
-    _size : Int,
-  ) -> Result[Array[Int], @nanoid.NanoidError] {
+    _size : Int32,
+  ) -> Result[Array[Int32], @nanoid.NanoidError] {
     Ok([300])
   }
   let result_invalid_byte = @nanoid.custom_random("ABC", 5, invalid_byte_random)
@@ -343,12 +345,12 @@ test "custom_random_probe_does_not_consume_state" {
   // Build a 256-char alphabet so byte values map directly to character indices.
   let mut full_alphabet = ""
   for i = 0; i < 256; i = i + 1 {
-    full_alphabet = full_alphabet + Int::unsafe_to_char(33 + i).to_string()
+    full_alphabet = full_alphabet + Int32::unsafe_to_char(33 + i).to_string()
   }
-  let counter : Ref[Int] = { val: 0, }
+  let counter : Ref[Int32] = { val: 0, }
   let deterministic_random = fn(
-    size : Int,
-  ) -> Result[Array[Int], @nanoid.NanoidError] {
+    size : Int32,
+  ) -> Result[Array[Int32], @nanoid.NanoidError] {
     let bytes = Array::make(size, 0)
     for i = 0; i < size; i = i + 1 {
       bytes[i] = counter.val
@@ -358,7 +360,7 @@ test "custom_random_probe_does_not_consume_state" {
   }
   let generator = @nanoid.custom_random(full_alphabet, 4, deterministic_random).unwrap()
   let id = generator().unwrap()
-  assert_eq(id.get_char(0).unwrap(), Int::unsafe_to_char(33))
+  assert_eq(id.get_char(0).unwrap(), Int32::unsafe_to_char(33))
   assert_eq(counter.val, 8)
 }
 
@@ -366,8 +368,8 @@ test "custom_random_probe_does_not_consume_state" {
 test "custom_random_runtime_length_validation" {
   // Probe call passes (size=1), runtime call fails with mismatched batch size.
   let mismatched_random = fn(
-    size : Int,
-  ) -> Result[Array[Int], @nanoid.NanoidError] {
+    size : Int32,
+  ) -> Result[Array[Int32], @nanoid.NanoidError] {
     if size == 1 {
       Ok([42])
     } else {
@@ -391,8 +393,8 @@ test "custom_random_runtime_length_validation" {
 test "custom_random_runtime_byte_range_validation" {
   // Probe call passes (size=1), runtime call returns invalid byte values.
   let invalid_runtime_random = fn(
-    size : Int,
-  ) -> Result[Array[Int], @nanoid.NanoidError] {
+    size : Int32,
+  ) -> Result[Array[Int32], @nanoid.NanoidError] {
     if size == 1 {
       Ok([42])
     } else {
@@ -414,10 +416,10 @@ test "custom_random_runtime_byte_range_validation" {
 
 ///|
 test "custom_random_single_character_alphabet_skips_random_probe" {
-  let call_count : Ref[Int] = { val: 0, }
+  let call_count : Ref[Int32] = { val: 0, }
   let failing_random = fn(
-    _size : Int,
-  ) -> Result[Array[Int], @nanoid.NanoidError] {
+    _size : Int32,
+  ) -> Result[Array[Int32], @nanoid.NanoidError] {
     call_count.val = call_count.val + 1
     panic() // unreachable: single-character alphabet skips random entirely
   }
@@ -439,16 +441,16 @@ test "small_size_non_power_two_alphabet_does_not_false_fail" {
   // Build a 129-char alphabet so acceptance probability is close to 1/2.
   let mut alphabet = ""
   for i = 0; i < 129; i = i + 1 {
-    alphabet = alphabet + Int::unsafe_to_char(1000 + i).to_string()
+    alphabet = alphabet + Int32::unsafe_to_char(1000 + i).to_string()
   }
 
   // First 6 bytes are rejected (>= 129 after mask), then one accepted byte (index 5).
   // The previous batch limit logic stopped at 3 batches and failed before this success.
-  let scripted_bytes : Array[Int] = [200, 200, 200, 200, 200, 200, 5]
-  let cursor : Ref[Int] = { val: 0, }
+  let scripted_bytes : Array[Int32] = [200, 200, 200, 200, 200, 200, 5]
+  let cursor : Ref[Int32] = { val: 0, }
   let scripted_random = fn(
-    size : Int,
-  ) -> Result[Array[Int], @nanoid.NanoidError] {
+    size : Int32,
+  ) -> Result[Array[Int32], @nanoid.NanoidError] {
     let bytes = Array::make(size, 0)
     for i = 0; i < size; i = i + 1 {
       if cursor.val < scripted_bytes.length() {
@@ -463,7 +465,8 @@ test "small_size_non_power_two_alphabet_does_not_false_fail" {
 
   let generator = @nanoid.custom_random(alphabet, 1, scripted_random).unwrap()
   match generator() {
-    Ok(id) => assert_eq(id.get_char(0).unwrap(), Int::unsafe_to_char(1000 + 5))
+    Ok(id) =>
+      assert_eq(id.get_char(0).unwrap(), Int32::unsafe_to_char(1000 + 5))
     Err(_) => assert_true(false)
   }
 }
@@ -477,7 +480,9 @@ test "insufficient_randomness_triggers_error" {
   // For alphabet "abc" (length 3), the mask is 3 (binary 11).
   // Any byte where (byte & 3) is >= 3 will be rejected.
   // We return 3, which guarantees rejection.
-  let bad_random = fn(size : Int) -> Result[Array[Int], @nanoid.NanoidError] {
+  let bad_random = fn(
+    size : Int32,
+  ) -> Result[Array[Int32], @nanoid.NanoidError] {
     Ok(Array::make(size, 3))
   }
   let alphabet = "abc"
@@ -737,8 +742,8 @@ test "custom_random_propagates_user_error" {
   // The probe call (size=1) inside custom_random must surface the user's RNG
   // error verbatim instead of swallowing it.
   let failing_random = fn(
-    _size : Int,
-  ) -> Result[Array[Int], @nanoid.NanoidError] {
+    _size : Int32,
+  ) -> Result[Array[Int32], @nanoid.NanoidError] {
     Err(RandomGenerationError("hardware RNG offline"))
   }
   match @nanoid.custom_random("ABC", 5, failing_random) {
@@ -751,8 +756,8 @@ test "custom_random_propagates_user_error" {
   // Probe succeeds, but a later runtime call fails — the error must still
   // propagate through the replay wrapper and the batch loop.
   let intermittent_random = fn(
-    size : Int,
-  ) -> Result[Array[Int], @nanoid.NanoidError] {
+    size : Int32,
+  ) -> Result[Array[Int32], @nanoid.NanoidError] {
     if size == 1 {
       Ok([42])
     } else {

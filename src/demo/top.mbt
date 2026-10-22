@@ -79,7 +79,7 @@ fn main {
   // Test oversized alphabet
   let mut long_alphabet = ""
   for i = 0; i < 257; i = i + 1 {
-    long_alphabet = long_alphabet + Int::unsafe_to_char(1000 + i).to_string()
+    long_alphabet = long_alphabet + Int32::unsafe_to_char(1000 + i).to_string()
   }
   match @nid.custom_alphabet(long_alphabet, size=5) {
     Ok(_) => println("Unexpected success with oversized alphabet")
